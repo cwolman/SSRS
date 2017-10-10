@@ -89,10 +89,10 @@ CREATE TABLE #Operators (Operator CHAR(6))
 
 SELECT RTRIM(a.acct_name) AS Account,
        RTRIM(a.full_name) AS AccountDescription,
-       RTRIM(a.contact) AS Contact,
-       RTRIM(a.address) AS Address,
+       RTRIM(dbo.Proper(a.contact)) AS Contact,
+       RTRIM(dbo.Proper(a.address)) AS Address,
        RTRIM(a.address2) AS Address2,
-       RTRIM(a.city) + ' ' + RTRIM(a.state) + ' ' + RTRIM(a.zip) + '   ' + RTRIM(a.country) AS CityStateZipCountry,
+       RTRIM(dbo.Proper(a.city)) + ' ' + RTRIM(a.state) + ' ' + RTRIM(a.zip) + '   ' + RTRIM(a.country) AS CityStateZipCountry,
        RTRIM(a.area_code) + ' ' + RTRIM(a.phone) AS PhoneNumber,
        t.invoice_no AS InvoiceNumber,
        RTRIM(i.descrip1) AS InvoiceDescription,
@@ -196,15 +196,15 @@ SELECT RTRIM(a.acct_name) AS Account,
           <DataField>Salespoint</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="department">
+        <Field Name="Department">
           <DataField>Department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="category">
+        <Field Name="Category">
           <DataField>Category</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="item">
+        <Field Name="Item">
           <DataField>Item</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
@@ -2542,7 +2542,7 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Account Statement  ●  v0.3 </Value>
+                      <Value>Peak Resorts  ●  Account Statement  ●  v0.4 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
