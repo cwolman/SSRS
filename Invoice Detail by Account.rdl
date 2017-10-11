@@ -418,7 +418,6 @@ No records found with the specified filters applied</Value>
               </Paragraph>
             </Paragraphs>
             <Top>2.25375in</Top>
-            <Left>0in</Left>
             <Height>0.75in</Height>
             <Width>5.96875in</Width>
             <Visibility>
@@ -3556,7 +3555,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Extension.Value</Value>
+                                  <Value>=Sum(Fields!Extension.Value)</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
                                     <Format>#,##0.00</Format>
@@ -4846,9 +4845,8 @@ No records found with the specified filters applied</Value>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
             <Top>2.25375in</Top>
-            <Left>0in</Left>
             <Height>2.92875in</Height>
-            <Width>9.75in</Width>
+            <Width>9.75001in</Width>
             <ZIndex>1</ZIndex>
             <Visibility>
               <Hidden>=Count(Fields!Account.Value, "GatherData") = 0</Hidden>
@@ -4867,7 +4865,6 @@ Parameters!pResort.Value="MS", "MS",
 Parameters!pResort.Value="WC", "WC"
 )</Value>
             <Sizing>FitProportional</Sizing>
-            <Left>0in</Left>
             <Height>1in</Height>
             <Width>2in</Width>
             <ZIndex>2</ZIndex>
@@ -4902,7 +4899,6 @@ Jackson, NH  03846
               </Paragraph>
             </Paragraphs>
             <Top>1.07986in</Top>
-            <Left>0in</Left>
             <Height>0.96097in</Height>
             <Width>1.94792in</Width>
             <ZIndex>3</ZIndex>
@@ -5178,7 +5174,7 @@ Blakeslee, PA  18610
           </Border>
         </Style>
       </Body>
-      <Width>9.75in</Width>
+      <Width>9.75001in</Width>
       <Page>
         <PageFooter>
           <Height>0.375in</Height>
@@ -5205,7 +5201,6 @@ Blakeslee, PA  18610
               </Paragraphs>
               <rd:DefaultName>textbox6</rd:DefaultName>
               <Top>0.125in</Top>
-              <Left>0in</Left>
               <Height>0.25in</Height>
               <Width>1.75in</Width>
               <DataElementOutput>NoOutput</DataElementOutput>
@@ -5224,7 +5219,7 @@ Blakeslee, PA  18610
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v0.2 </Value>
+                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v0.3 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
