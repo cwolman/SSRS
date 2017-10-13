@@ -1789,7 +1789,7 @@ END</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Peak Pass Sales By Resort  ●  v0.2 </Value>
+                      <Value>Peak Resorts  ● Peak Pass Sales By Resort  ●  v0.3 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -1912,10 +1912,9 @@ END</CommandText>
     <ReportParameter Name="pcSalespointIndex">
       <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>ListSalespointIndex</DataSetName>
-          <ValueField>SalespointIndex</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>PK_WSH</Value>
+        </Values>
       </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>Salespoint/Group</Prompt>
