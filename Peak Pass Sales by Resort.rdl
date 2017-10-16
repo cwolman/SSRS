@@ -1789,7 +1789,7 @@ END</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Peak Pass Sales By Resort  ●  v0.3 </Value>
+                      <Value>Peak Resorts  ● Peak Pass Sales By Resort  ●  v0.4 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -1888,7 +1888,7 @@ END</CommandText>
       <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value>none</Value>
+          <Value>salespoint</Value>
         </Values>
       </DefaultValue>
       <Prompt>Filter by Salespoint or Group</Prompt>
