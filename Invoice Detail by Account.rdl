@@ -477,7 +477,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Account.Value</Value>
+                                  <Value>=Fields!AccountDescription.Value</Value>
                                   <Style>
                                     <FontWeight>Bold</FontWeight>
                                   </Style>
@@ -676,7 +676,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!AccountDescription.Value</Value>
+                                  <Value>=Fields!Account.Value</Value>
                                   <Style>
                                     <FontWeight>Bold</FontWeight>
                                   </Style>
@@ -3133,7 +3133,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Ext. Price</Value>
+                                  <Value>Unit Price</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
                                     <FontWeight>Bold</FontWeight>
@@ -3457,7 +3457,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Iif(Fields!department.Value &lt;&gt; "**TRANS**", Fields!Extension.Value, Nothing)</Value>
+                                  <Value>=If(Fields!department.Value &lt;&gt; "**TRANS**", If(IsNumeric(Fields!Quantity.Value), Fields!Extension.Value/Fields!Quantity.Value, Nothing), Nothing)</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
                                     <Format>#,##0.00</Format>
@@ -3522,7 +3522,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Iif(Fields!department.Value = "**TRANS**", Fields!Extension.Value, Nothing)</Value>
+                                  <Value>=Iif(Fields!department.Value = "**TRANS**", sum(Fields!Extension.Value), Nothing)</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
                                     <Format>#,##0.00</Format>
@@ -4806,7 +4806,7 @@ No records found with the specified filters applied</Value>
                           <Group Name="table1_Details_Group">
                             <GroupExpressions>
                               <GroupExpression>=Fields!ItemDescription.Value</GroupExpression>
-                              <GroupExpression>=Fields!Extension.Value</GroupExpression>
+                              <GroupExpression>=If(Fields!department.Value &lt;&gt; "**TRANS**", If(IsNumeric(Fields!Quantity.Value), Fields!Extension.Value/Fields!Quantity.Value, Nothing), Nothing)</GroupExpression>
                             </GroupExpressions>
                             <DataElementName>Detail</DataElementName>
                           </Group>
@@ -5219,7 +5219,7 @@ Blakeslee, PA  18610
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v0.3 </Value>
+                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v0.4 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
