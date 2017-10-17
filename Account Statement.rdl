@@ -244,7 +244,7 @@ UNION
 SElECT acct_type AS AccountType, RTRIM(descrip) AS AccountTypeDescription, 1 AS Sort
 FROM accttype
 WHERE hidden = 0
-ORDER BY Sort</CommandText>
+ORDER BY Sort, AccountTypeDescription</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -464,7 +464,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Account.Value</Value>
+                                  <Value>=Fields!AccountDescription.Value</Value>
                                   <Style>
                                     <FontWeight>Bold</FontWeight>
                                   </Style>
@@ -565,7 +565,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!AccountDescription.Value</Value>
+                                  <Value>=Fields!Account.Value</Value>
                                   <Style>
                                     <FontWeight>Bold</FontWeight>
                                   </Style>
@@ -2146,7 +2146,7 @@ Parameters!pResort.Value="WC", "WC"
               <Paragraph>
                 <TextRuns>
                   <TextRun>
-                    <Value>=First(Fields!Account.Value, "GatherData")</Value>
+                    <Value>=First(Fields!AccountDescription.Value, "GatherData")</Value>
                     <Style />
                   </TextRun>
                 </TextRuns>
@@ -2542,7 +2542,7 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Account Statement  ●  v0.4 </Value>
+                      <Value>Peak Resorts  ●  Account Statement  ●  v0.5 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
