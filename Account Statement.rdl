@@ -2542,7 +2542,7 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Account Statement  ●  v0.5 </Value>
+                      <Value>Peak Resorts  ●  Account Statement  ●  v1.0 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
