@@ -27,15 +27,6 @@
           </QueryParameter>
         </QueryParameters>
         <CommandText>SET NOCOUNT  ON; 
-    
-  /* -- will replace with a join on final dataset
-  DECLARE  @AccountFullName VARCHAR(25); 
-  
-  SELECT @AccountFullName = full_name, 
-         @dEnd = DATEADD(DAY,DATEDIFF(DAY,'19000101',@dEnd),'19000102') -- strip time and advance a day 
-  FROM   dbo.accounts 
-  WHERE  acct_name = @Account
-  */
    
   IF OBJECT_ID('tempdb..#SaleNumbers') IS NOT NULL 
     DROP TABLE #SaleNumbers 
@@ -2842,7 +2833,6 @@ order by full_name</CommandText>
                           <PaddingBottom>2pt</PaddingBottom>
                         </Style>
                       </Textbox>
-                      <rd:Selected>true</rd:Selected>
                     </CellContents>
                   </TablixHeader>
                   <TablixMembers>
@@ -3007,7 +2997,7 @@ order by full_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Club Member Purhcases  ●  v0.1 </Value>
+                      <Value>Peak Resorts  ● Club Member Purhcases  ●  v1.0 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
