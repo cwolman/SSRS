@@ -5333,30 +5333,15 @@ Blakeslee, PA  18610
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="pcARAccountTypes">
+    <ReportParameter Name="pnInvoice">
       <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value>All</Value>
+          <Value />
         </Values>
       </DefaultValue>
-      <Prompt>A/R Accounts</Prompt>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>All</Value>
-            <Label>All Accounts</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>AR</Value>
-            <Label>A/R Accounts</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>NonAR</Value>
-            <Label>Non-A/R Accounts</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Invoice Number</Prompt>
     </ReportParameter>
     <ReportParameter Name="piAccountTypes">
       <DataType>Integer</DataType>
@@ -5376,6 +5361,16 @@ Blakeslee, PA  18610
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="pbDisplayInvoiceDetails">
+      <DataType>Boolean</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>false</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Display Invoice Details</Prompt>
+    </ReportParameter>
     <ReportParameter Name="pcAccounts">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5393,28 +5388,34 @@ Blakeslee, PA  18610
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="pvcSalespointFilter">
+    <ReportParameter Name="pResort">
       <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>none</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>Filter by Salespoint or Group</Prompt>
-      <Hidden>true</Hidden>
+      <Prompt>Resort</Prompt>
       <ValidValues>
         <ParameterValues>
           <ParameterValue>
-            <Value>none</Value>
-            <Label>No Filtering</Label>
+            <Value>AT</Value>
+            <Label>Attitash</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>salespoint</Value>
-            <Label>Salespoint</Label>
+            <Value>CM</Value>
+            <Label>Crotched</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>sp_group</Value>
-            <Label>Group</Label>
+            <Value>HM</Value>
+            <Label>Hunter</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>JFBB</Value>
+            <Label>JFBB</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>MS</Value>
+            <Label>Mt Snow</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>WC</Value>
+            <Label>Wildcat</Label>
           </ParameterValue>
         </ParameterValues>
       </ValidValues>
@@ -5445,26 +5446,6 @@ Blakeslee, PA  18610
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="pcSalespointIndex">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>ListSalespointIndex</DataSetName>
-          <ValueField>SalespointIndex</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Salespoint/Group</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>ListSalespointIndex</DataSetName>
-          <ValueField>SalespointIndex</ValueField>
-          <LabelField>Description</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
     <ReportParameter Name="pcOperatorIndex">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5485,15 +5466,31 @@ Blakeslee, PA  18610
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="pnInvoice">
+    <ReportParameter Name="pvcSalespointFilter">
       <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value />
+          <Value>none</Value>
         </Values>
       </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Invoice Number</Prompt>
+      <Prompt>Filter by Salespoint or Group</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>none</Value>
+            <Label>No Filtering</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>salespoint</Value>
+            <Label>Salespoint</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>sp_group</Value>
+            <Label>Group</Label>
+          </ParameterValue>
+        </ParameterValues>
+      </ValidValues>
     </ReportParameter>
     <ReportParameter Name="pvcFiltersToShow">
       <DataType>String</DataType>
@@ -5561,47 +5558,51 @@ Blakeslee, PA  18610
       <Prompt>Display Report Header</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="pbDisplayInvoiceDetails">
-      <DataType>Boolean</DataType>
+    <ReportParameter Name="pcARAccountTypes">
+      <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value>false</Value>
+          <Value>All</Value>
         </Values>
       </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Display Invoice Details</Prompt>
-    </ReportParameter>
-    <ReportParameter Name="pResort">
-      <DataType>String</DataType>
-      <Prompt>Resort</Prompt>
+      <Prompt>A/R Accounts</Prompt>
+      <Hidden>true</Hidden>
       <ValidValues>
         <ParameterValues>
           <ParameterValue>
-            <Value>AT</Value>
-            <Label>Attitash</Label>
+            <Value>All</Value>
+            <Label>All Accounts</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>CM</Value>
-            <Label>Crotched</Label>
+            <Value>AR</Value>
+            <Label>A/R Accounts</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>HM</Value>
-            <Label>Hunter</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>JFBB</Value>
-            <Label>JFBB</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>MS</Value>
-            <Label>Mt Snow</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>WC</Value>
-            <Label>Wildcat</Label>
+            <Value>NonAR</Value>
+            <Label>Non-A/R Accounts</Label>
           </ParameterValue>
         </ParameterValues>
       </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="pcSalespointIndex">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ListSalespointIndex</DataSetName>
+          <ValueField>SalespointIndex</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Salespoint/Group</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ListSalespointIndex</DataSetName>
+          <ValueField>SalespointIndex</ValueField>
+          <LabelField>Description</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
@@ -5625,8 +5626,8 @@ Blakeslee, PA  18610
           <ParameterName>pcDateType</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
           <ParameterName>pcARAccountTypes</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -5635,23 +5636,23 @@ Blakeslee, PA  18610
           <ParameterName>piAccountTypes</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>pcAccounts</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>pvcSalespointFilter</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>pvcOperatorFilter</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>4</RowIndex>
+          <ParameterName>pvcOperatorFilter</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>7</RowIndex>
           <ParameterName>pcSalespointIndex</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -5660,8 +5661,8 @@ Blakeslee, PA  18610
           <ParameterName>pcOperatorIndex</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>5</RowIndex>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>pnInvoice</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -5680,13 +5681,13 @@ Blakeslee, PA  18610
           <ParameterName>pbDisplayHeader</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>7</RowIndex>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>pbDisplayInvoiceDetails</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>7</RowIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>pResort</ParameterName>
         </CellDefinition>
       </CellDefinitions>
