@@ -2370,7 +2370,7 @@ order by full_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Club Member Purhcases by Item  ●  v0.1 </Value>
+                      <Value>Peak Resorts  ● Club Member Purhcases by Item  ●  v1.0 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
