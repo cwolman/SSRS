@@ -2997,7 +2997,7 @@ order by full_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Club Member Purhcases  ●  v1.0 </Value>
+                      <Value>Peak Resorts  ● Club Member Purhcases  ●  v1.1 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -3074,7 +3074,7 @@ order by full_name</CommandText>
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>=DateAdd("yyyy", -10, Today())</Value>
+          <Value>11/1/2016 12:00:00 AM</Value>
         </Values>
       </DefaultValue>
       <Prompt>Start Date</Prompt>
