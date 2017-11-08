@@ -2542,7 +2542,7 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Account Statement  ●  v1.1 </Value>
+                      <Value>Peak Resorts  ●  Account Statement  ●  v1.2</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -2623,6 +2623,41 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
       <AllowBlank>true</AllowBlank>
       <Prompt>End Date</Prompt>
     </ReportParameter>
+    <ReportParameter Name="piAccountTypes">
+      <DataType>Integer</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ListAccountTypes</DataSetName>
+          <ValueField>AccountType</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Account Types</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ListAccountTypes</DataSetName>
+          <ValueField>AccountType</ValueField>
+          <LabelField>AccountTypeDescription</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="pcAccounts">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ListAccounts</DataSetName>
+          <ValueField>AccountName</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Accounts</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ListAccounts</DataSetName>
+          <ValueField>AccountName</ValueField>
+          <LabelField>AccountDescription</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
     <ReportParameter Name="pcDateType">
       <DataType>String</DataType>
       <DefaultValue>
@@ -2651,41 +2686,6 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
           </ParameterValue>
         </ParameterValues>
       </ValidValues>
-    </ReportParameter>
-    <ReportParameter Name="pcAccounts">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>ListAccounts</DataSetName>
-          <ValueField>AccountName</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Accounts</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>ListAccounts</DataSetName>
-          <ValueField>AccountName</ValueField>
-          <LabelField>AccountDescription</LabelField>
-        </DataSetReference>
-      </ValidValues>
-    </ReportParameter>
-    <ReportParameter Name="piAccountTypes">
-      <DataType>Integer</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>ListAccountTypes</DataSetName>
-          <ValueField>AccountType</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Account Types</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>ListAccountTypes</DataSetName>
-          <ValueField>AccountType</ValueField>
-          <LabelField>AccountTypeDescription</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="pResort">
       <DataType>String</DataType>
@@ -2729,28 +2729,28 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
       <AllowBlank>true</AllowBlank>
       <Prompt>Invoice Number</Prompt>
     </ReportParameter>
-    <ReportParameter Name="pcARAccountTypes">
+    <ReportParameter Name="pvcOperatorFilter">
       <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value>All</Value>
+          <Value>none</Value>
         </Values>
       </DefaultValue>
-      <Prompt>A/R Accounts</Prompt>
+      <Prompt>Filter by Operator or Group</Prompt>
       <Hidden>true</Hidden>
       <ValidValues>
         <ParameterValues>
           <ParameterValue>
-            <Value>All</Value>
-            <Label>All Accounts</Label>
+            <Value>none</Value>
+            <Label>No Filtering</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>AR</Value>
-            <Label>A/R Accounts</Label>
+            <Value>operator</Value>
+            <Label>Operator</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>NonAR</Value>
-            <Label>Non-A/R Accounts</Label>
+            <Value>op_group</Value>
+            <Label>Group</Label>
           </ParameterValue>
         </ParameterValues>
       </ValidValues>
@@ -2781,31 +2781,74 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="pvcOperatorFilter">
+    <ReportParameter Name="pcARAccountTypes">
       <DataType>String</DataType>
       <DefaultValue>
         <Values>
-          <Value>none</Value>
+          <Value>All</Value>
         </Values>
       </DefaultValue>
-      <Prompt>Filter by Operator or Group</Prompt>
+      <Prompt>A/R Accounts</Prompt>
       <Hidden>true</Hidden>
       <ValidValues>
         <ParameterValues>
           <ParameterValue>
-            <Value>none</Value>
-            <Label>No Filtering</Label>
+            <Value>All</Value>
+            <Label>All Accounts</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>operator</Value>
-            <Label>Operator</Label>
+            <Value>AR</Value>
+            <Label>A/R Accounts</Label>
           </ParameterValue>
           <ParameterValue>
-            <Value>op_group</Value>
-            <Label>Group</Label>
+            <Value>NonAR</Value>
+            <Label>Non-A/R Accounts</Label>
           </ParameterValue>
         </ParameterValues>
       </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="pcSortBy">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>descrip</Value>
+        </Values>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Sort by</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>descrip</Value>
+            <Label>Invoice Description</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>invoice_no</Value>
+            <Label>Invoice Number</Label>
+          </ParameterValue>
+        </ParameterValues>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="pcOperatorIndex">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ListOperatorIndex</DataSetName>
+          <ValueField>OperatorIndex</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Operator/Group</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ListOperatorIndex</DataSetName>
+          <ValueField>OperatorIndex</ValueField>
+          <LabelField>Description</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="pcSalespointIndex">
       <DataType>String</DataType>
@@ -2873,49 +2916,6 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="pcSortBy">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>descrip</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Sort by</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>descrip</Value>
-            <Label>Invoice Description</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>invoice_no</Value>
-            <Label>Invoice Number</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
-    </ReportParameter>
-    <ReportParameter Name="pcOperatorIndex">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>ListOperatorIndex</DataSetName>
-          <ValueField>OperatorIndex</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Operator/Group</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>ListOperatorIndex</DataSetName>
-          <ValueField>OperatorIndex</ValueField>
-          <LabelField>Description</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -2934,17 +2934,17 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>pcDateType</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>3</RowIndex>
+          <RowIndex>4</RowIndex>
           <ParameterName>pcARAccountTypes</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>piAccountTypes</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -2959,17 +2959,17 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>4</RowIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>pvcOperatorFilter</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>5</RowIndex>
+          <RowIndex>6</RowIndex>
           <ParameterName>pcSalespointIndex</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>6</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>pcOperatorIndex</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -2979,12 +2979,12 @@ First(Fields!PhoneNumber.Value, "GatherData")</Value>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>5</RowIndex>
+          <RowIndex>6</RowIndex>
           <ParameterName>pvcFiltersToShow</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>6</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>pcSortBy</ParameterName>
         </CellDefinition>
         <CellDefinition>
