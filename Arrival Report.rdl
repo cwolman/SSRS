@@ -2455,7 +2455,7 @@ order by text_1</CommandText>
           </Border>
         </Style>
       </Body>
-      <Width>10.81251in</Width>
+      <Width>9.81251in</Width>
       <Page>
         <PageFooter>
           <Height>0.45in</Height>
@@ -2500,7 +2500,7 @@ order by text_1</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.1</Value>
+                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.2</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
