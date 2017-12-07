@@ -132,16 +132,17 @@ drop table #ttDates</CommandText>
           <QueryParameter Name="@endDate">
             <Value>=Parameters!endDate.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@resort">
-            <Value>=Parameters!resort.Value</Value>
+          <QueryParameter Name="@accountType">
+            <Value>=Parameters!accountType.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
-select distinct account
-from invoices
-where departure&gt;=@startDate and arrival&lt;=@endDate + ' 23:59:59'
-	and text_1 in(@resort)
-order by account</CommandText>
+
+SELECT distinct i.account
+FROM dbo.accounts a JOIN
+            dbo.invoices i ON a.acct_name = i.account
+WHERE (i.departure &gt;= @startDate) AND (i.arrival &lt;= @endDate + ' 23:59:59') AND (a.acct_type IN (@accountType))
+ORDER BY account</CommandText>
       </Query>
       <Fields>
         <Field Name="account">
@@ -171,6 +172,43 @@ order by text_1</CommandText>
         <Field Name="text_1">
           <DataField>text_1</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="GetAccountTypes">
+      <Query>
+        <DataSourceName>DataSource1</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@startDate">
+            <Value>=Parameters!startDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@endDate">
+            <Value>=Parameters!endDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+
+SELECT 0 AS AccountType, 'NONE ASSIGNED' AS AccountTypeDescription, 0 AS Sort
+UNION
+SELECT accounts.acct_type AS AccountType, RTRIM(descrip) AS AccountTypeDescription, 1 AS Sort
+FROM accounts JOIN
+            invoices ON accounts.acct_name = invoices.account JOIN
+            accttype ON accounts.acct_type = accttype.acct_type
+WHERE accttype.hidden = 0 AND invoices.departure &gt;= @startDate AND invoices.arrival &lt;= @endDate + ' 23:59:59'
+ORDER BY Sort, AccountTypeDescription</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="AccountType">
+          <DataField>AccountType</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AccountTypeDescription">
+          <DataField>AccountTypeDescription</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Sort">
+          <DataField>Sort</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2500,7 +2538,7 @@ order by text_1</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.2</Value>
+                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.3</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -2595,21 +2633,20 @@ order by text_1</CommandText>
       </DefaultValue>
       <Prompt>End Date</Prompt>
     </ReportParameter>
-    <ReportParameter Name="resort">
+    <ReportParameter Name="accountType">
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
-          <DataSetName>GetResorts</DataSetName>
-          <ValueField>text_1</ValueField>
+          <DataSetName>GetAccountTypes</DataSetName>
+          <ValueField>AccountType</ValueField>
         </DataSetReference>
       </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Resort</Prompt>
+      <Prompt>Account Types</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>GetResorts</DataSetName>
-          <ValueField>text_1</ValueField>
-          <LabelField>text_1</LabelField>
+          <DataSetName>GetAccountTypes</DataSetName>
+          <ValueField>AccountType</ValueField>
+          <LabelField>AccountTypeDescription</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -2628,6 +2665,25 @@ order by text_1</CommandText>
           <DataSetName>GetAccounts</DataSetName>
           <ValueField>account</ValueField>
           <LabelField>account</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="resort">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>GetResorts</DataSetName>
+          <ValueField>text_1</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Resort</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>GetResorts</DataSetName>
+          <ValueField>text_1</ValueField>
+          <LabelField>text_1</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -2651,12 +2707,17 @@ order by text_1</CommandText>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>resort</ParameterName>
+          <ParameterName>accountType</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>account</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>resort</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
