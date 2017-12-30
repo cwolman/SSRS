@@ -3457,7 +3457,7 @@ No records found with the specified filters applied</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=If(Fields!department.Value &lt;&gt; "**TRANS**", If(IsNumeric(Fields!Quantity.Value), Fields!Extension.Value/Fields!Quantity.Value, Nothing), Nothing)</Value>
+                                  <Value>=If(Fields!Quantity.Value=0, Nothing, Fields!Extension.Value/Fields!Quantity.Value)</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
                                     <Format>#,##0.00</Format>
@@ -4806,7 +4806,7 @@ No records found with the specified filters applied</Value>
                           <Group Name="table1_Details_Group">
                             <GroupExpressions>
                               <GroupExpression>=Fields!ItemDescription.Value</GroupExpression>
-                              <GroupExpression>=If(Fields!department.Value &lt;&gt; "**TRANS**", If(IsNumeric(Fields!Quantity.Value), Fields!Extension.Value/Fields!Quantity.Value, Nothing), Nothing)</GroupExpression>
+                              <GroupExpression>=If(Fields!Quantity.Value=0, Nothing, Fields!Extension.Value/Fields!Quantity.Value)</GroupExpression>
                             </GroupExpressions>
                             <DataElementName>Detail</DataElementName>
                           </Group>
@@ -5219,7 +5219,7 @@ Blakeslee, PA  18610
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v1.1 </Value>
+                      <Value>Peak Resorts  ●  Invoice Detail By Account  ●  v1.2 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
