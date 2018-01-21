@@ -42,7 +42,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 select td.DateValue, final.*, concat(datediff(day,arrival,DateValue)+1,' of ', datediff(day,arrival,departure)+1) as 'day'
 from #ttdates td left join 
-(select account, dbo.Proper(full_name) as full_name, dbo.Proper(contact) as contact, dbo.Proper(act.address) as address, dbo.Proper(act.address2) as address2, dbo.Proper(act.city) as city, act.state, act.zip, inv.e_mail, inv.area_code, inv.phone, descrip1, descrip2, arrival, departure, num_items1 as tickets, num_items2 as rentals, num_items3 as lessons, num_items4 as 'lunch/tube', num_items5 as 'B/Y/H', 
+(select account, dbo.Proper(full_name) as full_name, dbo.Proper(contact) as contact, dbo.Proper(act.address) as address, dbo.Proper(act.address2) as address2, dbo.Proper(act.city) as city, act.state, act.zip, act.e_mail, act.area_code, act.phone, descrip1, descrip2, arrival, departure, num_items1 as tickets, num_items2 as rentals, num_items3 as lessons, num_items4 as 'lunch/tube', num_items5 as 'B/Y/H', 
 	inv.text_1 as resort, case when isnumeric(inv.text_2)=1 then cast(inv.text_2 as int) else 0 end as food, inv.text_3 as transport, inv.notes
 from
 	(select * from invoices i) inv
@@ -1487,7 +1487,7 @@ order by text_1</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Pre-Arrival Report  ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  Pre-Arrival Report  ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
