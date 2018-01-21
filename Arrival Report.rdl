@@ -42,7 +42,7 @@ SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 select td.DateValue, final.*, concat(datediff(day,arrival,DateValue)+1,' of ', datediff(day,arrival,departure)+1) as 'day'
 from #ttdates td left join 
-(select account, full_name, descrip1, arrival, departure, num_items1 as tickets, num_items2 as rentals, num_items3 as lessons, num_items4 as 'lunch/tube', num_items5 as 'B/Y/H', 
+(select account, full_name, dbo.Proper(contact) as contact, act.area_code, act.phone, descrip1, arrival, departure, num_items1 as tickets, num_items2 as rentals, num_items3 as lessons, num_items4 as 'lunch/tube', num_items5 as 'B/Y/H', 
 	inv.text_1 as resort, case when isnumeric(inv.text_2)=1 then cast(inv.text_2 as int) else 0 end as food, inv.text_3 as transport, inv.notes
 from
 	(select * from invoices i) inv
@@ -68,13 +68,25 @@ drop table #ttDates</CommandText>
           <DataField>full_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="contact">
+          <DataField>contact</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="descrip1">
           <DataField>descrip1</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="area_code">
+          <DataField>area_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="arrival">
           <DataField>arrival</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="phone">
+          <DataField>phone</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="departure">
           <DataField>departure</DataField>
@@ -668,7 +680,7 @@ ORDER BY Sort, AccountTypeDescription</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>0.41667in</Height>
+                  <Height>0.80209in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -725,6 +737,37 @@ ORDER BY Sort, AccountTypeDescription</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Value>=Fields!full_name.Value</Value>
+                                  <Style>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>#333333</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!contact.Value</Value>
+                                  <Style>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>#333333</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!area_code.Value</Value>
+                                  <Style>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>#333333</Color>
+                                  </Style>
+                                </TextRun>
+                                <TextRun>
+                                  <Value>=Fields!phone.Value</Value>
                                   <Style>
                                     <FontWeight>Normal</FontWeight>
                                     <Color>#333333</Color>
@@ -2445,7 +2488,7 @@ ORDER BY Sort, AccountTypeDescription</CommandText>
             <RepeatRowHeaders>true</RepeatRowHeaders>
             <DataSetName>GatherData</DataSetName>
             <Top>0.5in</Top>
-            <Height>1.86459in</Height>
+            <Height>2.25001in</Height>
             <Width>9.81251in</Width>
             <Style>
               <Border>
@@ -2486,7 +2529,7 @@ ORDER BY Sort, AccountTypeDescription</CommandText>
             </Style>
           </Textbox>
         </ReportItems>
-        <Height>2.61459in</Height>
+        <Height>2.75001in</Height>
         <Style>
           <Border>
             <Style>None</Style>
@@ -2538,7 +2581,7 @@ ORDER BY Sort, AccountTypeDescription</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.3</Value>
+                      <Value>Peak Resorts  ●  Arrival Report  ●  v1.4</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
