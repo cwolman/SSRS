@@ -21,7 +21,7 @@
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText> select s.sale_no, s.date_time  
+        <CommandText>select s.sale_no, s.date_time  
 	, dbo.siriusfn_Parse('DonateNotes',s.sale_text) as donation_notes
 	, dbo.siriusfn_Parse('Tribute1',s.sale_text) as donation_for
 	, dbo.siriusfn_Parse('Tribute2',s.sale_text) as honor_ofsponsor_for
@@ -31,7 +31,7 @@
 	, dbo.siriusfn_Parse('DonateDCI',s.sale_text) as donation_DCI   
 	, dbo.siriusfn_Parse('DonateModDCI',s.sale_text) as donation_mod_DCI
  from ww_sales s
- where s.sale_no in(select sale_no from transact where category='donation' and department='jb_miscrev') and s.date_time between @StartDate and dateadd(s,-1,cast(dateadd(d,1,cast(@EndDate as date)) as datetime))</CommandText>
+ where s.sale_no in(select sale_no from tr_save where category='donation' and department='jb_miscrev' and finalized=1) and s.date_time between @StartDate and dateadd(s,-1,cast(dateadd(d,1,cast(@EndDate as date)) as datetime))</CommandText>
       </Query>
       <Fields>
         <Field Name="sale_no">
@@ -1331,7 +1331,7 @@
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Ski for the Cure Donations  ●  v1.0 </Value>
+                      <Value>Peak Resorts  ● Ski for the Cure Donations  ●  v1.1 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
