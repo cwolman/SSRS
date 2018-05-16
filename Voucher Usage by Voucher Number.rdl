@@ -106,9 +106,8 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             </Paragraphs>
             <rd:WatermarkTextbox>Title</rd:WatermarkTextbox>
             <rd:DefaultName>ReportTitle</rd:DefaultName>
-            <Top>0in</Top>
             <Height>0.58333in</Height>
-            <Width>4.64583in</Width>
+            <Width>2.61458in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -123,19 +122,19 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>2.08125in</Width>
+                  <Width>1.66933in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>2.08125in</Width>
+                  <Width>2.10683in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>2.08125in</Width>
+                  <Width>1.28634in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>0.91458in</Width>
+                  <Width>0.94016in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>0.84167in</Width>
+                  <Width>1.54886in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -490,9 +489,9 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             </TablixRowHierarchy>
             <DataSetName>DataSet1</DataSetName>
             <Top>2.0625in</Top>
-            <Left>0.23208in</Left>
+            <Left>0.10417in</Left>
             <Height>0.5in</Height>
-            <Width>8in</Width>
+            <Width>7.55152in</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -623,9 +622,9 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             </Paragraphs>
             <rd:DefaultName>StartVoucherNumber</rd:DefaultName>
             <Top>0.33333in</Top>
-            <Left>4.65972in</Left>
+            <Left>4.22222in</Left>
             <Height>0.25in</Height>
-            <Width>3.57236in</Width>
+            <Width>3.43347in</Width>
             <ZIndex>5</ZIndex>
             <Style>
               <Border>
@@ -660,7 +659,7 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             <Top>1.59722in</Top>
             <Left>0.10417in</Left>
             <Height>0.34375in</Height>
-            <Width>8.12792in</Width>
+            <Width>7.55152in</Width>
             <ZIndex>6</ZIndex>
             <Style>
               <Border>
@@ -693,9 +692,9 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
             </Paragraphs>
             <rd:DefaultName>StartVoucherNumber</rd:DefaultName>
             <Top>0.06944in</Top>
-            <Left>4.64583in</Left>
+            <Left>4.20833in</Left>
             <Height>0.25in</Height>
-            <Width>3.57236in</Width>
+            <Width>3.44736in</Width>
             <ZIndex>7</ZIndex>
             <Style>
               <Border>
@@ -715,7 +714,7 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
           </Border>
         </Style>
       </Body>
-      <Width>8.24034in</Width>
+      <Width>7.75076in</Width>
       <Page>
         <PageFooter>
           <Height>0.325in</Height>
@@ -759,7 +758,7 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Voucher  Usage by Voucher Number  ●  v1.0</Value>
+                      <Value>Peak Resorts  ● Voucher  Usage by Voucher Number  ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -774,7 +773,7 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
               <Top>0.02778in</Top>
               <Left>1.37501in</Left>
               <Height>0.25in</Height>
-              <Width>5.80283in</Width>
+              <Width>5.36533in</Width>
               <ZIndex>1</ZIndex>
               <Style>
                 <PaddingLeft>2pt</PaddingLeft>
@@ -802,10 +801,10 @@ where cast(left(pass_no,len(pass_no)-6) as bigint) between left(@StartVoucherNum
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>textbox8</rd:DefaultName>
-              <Top>0.02778in</Top>
-              <Left>7.17784in</Left>
+              <Top>0.01389in</Top>
+              <Left>6.74034in</Left>
               <Height>0.25in</Height>
-              <Width>1.0625in</Width>
+              <Width>0.91535in</Width>
               <ZIndex>2</ZIndex>
               <Style>
                 <PaddingLeft>2pt</PaddingLeft>
