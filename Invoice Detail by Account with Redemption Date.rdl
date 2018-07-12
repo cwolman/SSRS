@@ -4811,7 +4811,7 @@ No records found with the specified filters applied</Value>
                         <TablixMember>
                           <Group Name="table1_Details_Group">
                             <GroupExpressions>
-                              <GroupExpression>=Fields!ItemDescription.Value</GroupExpression>
+                              <GroupExpression>=Fields!TransactionDateTime.Value</GroupExpression>
                               <GroupExpression>=If(Fields!Quantity.Value=0, Nothing, Fields!Extension.Value/Fields!Quantity.Value)</GroupExpression>
                             </GroupExpressions>
                             <DataElementName>Detail</DataElementName>
@@ -5228,7 +5228,7 @@ Blakeslee, PA  18610
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Invoice Detail By Account with Redemption Date  ●  v1.0 </Value>
+                      <Value>Peak Resorts  ●  Invoice Detail By Account with Redemption Date  ●  v1.1 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
