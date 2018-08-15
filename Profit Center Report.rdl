@@ -17,12 +17,9 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@piSalespointGroup">
-            <Value>=Parameters!piSalespointGroup.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>set transaction isolation level read uncommitted 
+        <CommandText>declare @piSalespointGroup int=48
+
+set transaction isolation level read uncommitted 
 
 if object_id('tempdb..#Sales') is not null drop table #Sales
 create table #Sales
@@ -43,7 +40,7 @@ insert into #Sales
       join operator op on op.op_code = sh.operator
       join sp_link sl on sl.salespoint = sh.salespoint
       join sp_group sg on sg.group_no = sl.group_no
-     where sh.date_time between cast(getdate() as date) and getdate()
+     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59' -- cast(getdate() as date) and getdate()
        and sg.group_no = @piSalespointGroup
 -- Faux Finalized sales
 insert into #Sales
@@ -53,22 +50,57 @@ insert into #Sales
       join operator op on op.op_code = sh.operator
       join sp_link sl on sl.salespoint = sh.salespoint
       join sp_group sg on sg.group_no = sl.group_no
-     where sh.date_time between cast(getdate() as date) and getdate()
+     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59' --cast(getdate() as date) and getdate()
        and sh.finalized = 0
        and sh.final_pend = 1
        and sg.group_no = @piSalespointGroup
+
+if object_id('tempdb..#Salespoints') is not null drop table #Salespoints
+create table #Salespoints
+(
+      spGroup         varchar(25),
+      salespoint      char(6), 
+      extension		  decimal(18,2),
+	  sale_count	  int
+)
+insert into #Salespoints
+	select sh.spGroup,
+           tr.salespoint,
+           sum(extension) as extension,
+		   count(distinct tr.sale_no) as sale_count   
+      from #Sales sh
+      join transact tr on tr.sale_no = sh.sale_no
+     where tr.department not in ('**TRANS**') 
+  group by sh.spGroup, tr.salespoint
+  
+	union all 
+    
+	-- Faux Finalize
+    select sh.spGroup,
+		   ts.salespoint, 
+           sum(ts.extension) as extension,
+		   count(distinct ts.sale_no) as sale_count
+      from #Sales sh
+      join tr_save ts on ts.sale_no = sh.sale_no
+  group by sh.spGroup, ts.salespoint
+
 -- ===========================================
 -- Payments (Faux Finalize payments make it to sale_hdr)
 -- ===========================================
 select sh.spGroup, 
        cast(rtrim(pm.descrip) as char(25)) + cast(sum(pt.Paid) as char(10)) as PmtString,
+	   cast(sum(pt.paid) as numeric(18,2)) as PmtTotal,
        '' as PcString,
        0  as Revenue,
        '' as DiscString,
        0  as DiscountAmount, 
-       '' as dcString, 
+       '' as dcString,
+	   0  as dcTotal, 
        0  as taxAmount, 
-       '' as opString  
+       '' as opString,
+	   0  as opTotal,
+	   '' as spString,
+	   0  as spTotal  
   from #Sales sh
   join invoices iv on iv.invoice_no = sh.invoice_no
   join siriusv_PaymentTypePaidBySaleNo pt on pt.sale_no = sh.sale_no
@@ -83,13 +115,18 @@ union all
 -- ===========================================
 select u.spGroup, 
        '' as PmtString,
+	   0  as PmtTotal,
        cast(rtrim(pc.descrip) as char(25)) + cast(sum(u.Revenue) as char(10)) as PcString, 
-       sum(u.Revenue) as Revenue, 
+       cast(sum(u.Revenue) as numeric(18,2)) as Revenue, 
        '' as DiscString,
        0  as DiscountAmount, 
-       '' as dcString, 
+       '' as dcString,
+	   0  as dcTotal, 
        0  as taxAmount, 
-       '' as opString  
+       '' as opString,
+	   0  as opTotal,
+	   '' as spString,
+	   0  as spTotal  
   from (select sh.spGroup,
                pr.pr_ctr_no,
                sum(pr.Revenue) as Revenue
@@ -148,13 +185,22 @@ union all
 -- ===========================================
 select u.spGroup,
        '' as PmtString,
+	   0  as PmtTotal,
        '' as PcString,
        0  as Revenue,
-       cast(sp.descrip as char(25)) + cast(sum(u.DiscountAmount) as char(10)) as DiscString,
-       sum(u.DiscountAmount) as DiscountAmount, 
-       '' as dcString, 
+       concat(u.special,
+		space(2),
+		replicate(' ',4-len(count(u.special))) + cast(count(u.special) as varchar),
+		space(11),
+		replicate(' ',8-len(sum(u.DiscountAmount))) + cast(sum(u.DiscountAmount) as varchar)) as DiscString,
+       cast(sum(u.DiscountAmount) as numeric(18,2)) as DiscountAmount, 
+       '' as dcString,
+	   0  as dcTotal, 
        0  as taxAmount,
-       '' as opString  
+       '' as opString,
+	   0  as opTotal,
+	   '' as spString,
+	   0  as spTotal  
   from (select sh.spGroup,
                tr.special,
                sum(tr.disc_amt) as DiscountAmount
@@ -172,8 +218,7 @@ select u.spGroup,
          where ts.disc_amt &lt;&gt; 0
          group by sh.spGroup, ts.special
        ) u 
-  join specials sp on sp.name = u.special
- group by u.spGroup, u.special, sp.descrip
+ group by u.spGroup, u.special
 
  union all
 -- ===========================================
@@ -181,13 +226,18 @@ select u.spGroup,
 -- ===========================================
 select spGroup,
        '' as PmtString,
+	   0  as PmtTotal,
        '' as PcString,
        0  as Revenue,
        '' as DiscString,
        0  as DiscountAmount, 
        department + cast(category as char(15)) + cast(sum(extension) as char(10)) as dcString, 
-       sum(tax) as taxAmount,
-       '' as opString  
+       cast(sum(extension) as numeric(18,2)) as dcTotal,
+	   sum(tax) as taxAmount,
+       '' as opString,
+	   0  as opTotal,
+	   '' as spString,
+	   0  as spTotal  
   from (select sh.spGroup,
                tr.department, 
                tr.category,
@@ -222,13 +272,18 @@ union all
 -- ===========================================
 select u.spGroup,
        '' as PmtString,
+	   0  as PmtTotal,
        '' as PcString,
        0  as Revenue,
        '' as DiscString,
        0  as DiscountAmount, 
-       '' as dcString, 
+       '' as dcString,
+	   0  as dcTotal, 
        0  as taxAmount,
-       cast(rtrim(op.first_name) + ' ' + rtrim(op.last_name) as char(25)) + cast(sum(extension) as char(10)) as opString
+       cast(rtrim(op.first_name) + ' ' + rtrim(op.last_name) as char(25)) + cast(sum(extension) as char(10)) as opString,
+	   cast(sum(extension) as numeric(18,2)) as opTotal,
+	   '' as spString,
+	   0  as spTotal
   from (select sh.spGroup,
                tr.operator,
                sum(extension) as extension   
@@ -247,7 +302,35 @@ select u.spGroup,
          group by sh.spGroup, ts.operator  
      ) u
   join operator op on op.op_code = u.operator
- group by u.spGroup, u.operator, op.first_name, op.last_name  </CommandText>
+ group by u.spGroup, u.operator, op.first_name, op.last_name 
+ 
+ union all
+ 
+ -- ===========================================
+-- Sales by Salespoint
+-- ===========================================
+select u.spGroup,
+       '' as PmtString,
+	   0  as PmtTotal,
+       '' as PcString,
+       0  as Revenue,
+       '' as DiscString,
+       0  as DiscountAmount, 
+       '' as dcString,
+	   0  as dcTotal, 
+       0  as taxAmount,
+	   '' as opString,
+	   0  as opTotal,
+concat(salespoint,
+		space(6),
+		replicate(' ', 4-len(sum(sale_count))) + cast(sum(sale_count) as varchar),
+		space(3),
+		replicate(' ',5-len(cast(sum(extension)/(select sum(extension) from #Salespoints)*100 as decimal(4,1)))) + cast(cast(sum(extension)/(select sum(extension) from #Salespoints)*100 as decimal(4,1)) as varchar),
+		space(3),
+		replicate(' ',8-len(sum(extension))) + cast(sum(extension) as varchar)) as spString,
+	   cast(sum(extension) as decimal(18,2)) as spTotal
+  from #Salespoints u
+ group by u.spGroup, u.salespoint</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -262,6 +345,10 @@ select u.spGroup,
         <Field Name="PmtString">
           <DataField>PmtString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="PmtTotal">
+          <DataField>PmtTotal</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="PcString">
           <DataField>PcString</DataField>
@@ -283,9 +370,25 @@ select u.spGroup,
           <DataField>dcString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="dcTotal">
+          <DataField>dcTotal</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="opString">
           <DataField>opString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="spString">
+          <DataField>spString</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="opTotal">
+          <DataField>opTotal</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="spTotal">
+          <DataField>spTotal</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -821,6 +924,50 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="spTotal6">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!PmtTotal.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox209">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -970,6 +1117,50 @@ order by descrip</CommandText>
                             </Border>
                           </Style>
                         </Tablix>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="spTotal5">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Revenue.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -1137,6 +1328,50 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="spTotal4">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!dcTotal.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox184">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -1182,7 +1417,7 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Special                      Amount</Value>
+                                  <Value>Special      Qty             Amount</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1286,6 +1521,50 @@ order by descrip</CommandText>
                             </Border>
                           </Style>
                         </Tablix>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="spTotal3">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!DiscountAmount.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -1449,11 +1728,55 @@ order by descrip</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>0.4in</Height>
+                  <Height>0.2in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox236">
+                        <Textbox Name="spTotal2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!opTotal.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox10">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -1472,7 +1795,7 @@ order by descrip</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox236</rd:DefaultName>
+                          <rd:DefaultName>Textbox10</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1481,6 +1804,173 @@ order by descrip</CommandText>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox224">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Register     Qty     %       Amount</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox223</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <BottomBorder>
+                              <Style>Solid</Style>
+                            </BottomBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Tablix Name="Tablix3">
+                          <TablixBody>
+                            <TablixColumns>
+                              <TablixColumn>
+                                <Width>2.70001in</Width>
+                              </TablixColumn>
+                            </TablixColumns>
+                            <TablixRows>
+                              <TablixRow>
+                                <Height>0.2in</Height>
+                                <TablixCells>
+                                  <TablixCell>
+                                    <CellContents>
+                                      <Textbox Name="spString">
+                                        <CanGrow>true</CanGrow>
+                                        <KeepTogether>true</KeepTogether>
+                                        <Paragraphs>
+                                          <Paragraph>
+                                            <TextRuns>
+                                              <TextRun>
+                                                <Value>=Fields!spString.Value</Value>
+                                                <Style>
+                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontSize>8pt</FontSize>
+                                                </Style>
+                                              </TextRun>
+                                            </TextRuns>
+                                            <Style />
+                                          </Paragraph>
+                                        </Paragraphs>
+                                        <rd:DefaultName>spString</rd:DefaultName>
+                                        <Style>
+                                          <Border>
+                                            <Color>LightGrey</Color>
+                                            <Style>None</Style>
+                                          </Border>
+                                          <PaddingLeft>2pt</PaddingLeft>
+                                          <PaddingRight>2pt</PaddingRight>
+                                          <PaddingTop>2pt</PaddingTop>
+                                          <PaddingBottom>2pt</PaddingBottom>
+                                        </Style>
+                                      </Textbox>
+                                    </CellContents>
+                                  </TablixCell>
+                                </TablixCells>
+                              </TablixRow>
+                            </TablixRows>
+                          </TablixBody>
+                          <TablixColumnHierarchy>
+                            <TablixMembers>
+                              <TablixMember />
+                            </TablixMembers>
+                          </TablixColumnHierarchy>
+                          <TablixRowHierarchy>
+                            <TablixMembers>
+                              <TablixMember>
+                                <Group Name="Details5" />
+                                <TablixMembers>
+                                  <TablixMember />
+                                </TablixMembers>
+                                <Visibility>
+                                  <Hidden>=iif(Fields!spString.Value = "", TRUE, FALSE)</Hidden>
+                                </Visibility>
+                              </TablixMember>
+                            </TablixMembers>
+                          </TablixRowHierarchy>
+                          <DataSetName>GatherData</DataSetName>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </Tablix>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="spTotal">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!spTotal.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>spTotal</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Double</Style>
+                            </TopBorder>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>8pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1533,7 +2023,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.1</Value>
+                                  <Value>v0.2</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -1629,6 +2119,15 @@ order by descrip</CommandText>
                   <KeepWithGroup>Before</KeepWithGroup>
                 </TablixMember>
                 <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
                   <Visibility>
                     <Hidden>=iif(sum(Fields!DiscountAmount.Value) = 0, TRUE, FALSE)</Hidden>
                   </Visibility>
@@ -1652,10 +2151,25 @@ order by descrip</CommandText>
                 <TablixMember>
                   <KeepWithGroup>Before</KeepWithGroup>
                 </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>5.71042in</Height>
+            <Height>7.11042in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -1664,7 +2178,7 @@ order by descrip</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>5.71042in</Height>
+        <Height>7.31042in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
