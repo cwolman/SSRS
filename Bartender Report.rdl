@@ -17,12 +17,9 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@piSalespointGroup">
-            <Value>=Parameters!piSalespointGroup.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>set transaction isolation level read uncommitted 
+        <CommandText>declare @piSalespointGroup int=48
+
+set transaction isolation level read uncommitted 
 
 ;
 with cteSales
@@ -31,15 +28,15 @@ as
     select sh.sale_no, sh.operator, sh.salespoint, rtrim(op.first_name) firstName, rtrim(op.last_name) lastName, 
            case when tr.department like '**%' then 'Tips' else 'Revenue' end as department, 
            case when tr.department like '**%' then 0 else tr.extension end as Revenue, 
-           case when tr.department not like '**%' then tr.extension else 0 end as Tips, 
-           case when tr.department not like '**%' then tl.noncshtips else 0 end as NonCashTips
+           case when tr.department like '**%' then tr.extension else 0 end as Tips, 
+           case when tr.department like '**%' then tl.noncshtips else 0 end as NonCashTips
       from sale_hdr sh
       join transact tr on tr.sale_no = sh.sale_no
       join operator op on op.op_code = sh.operator
       join sp_link sl on sl.salespoint = sh.salespoint
       join sp_group sg on sg.group_no = sl.group_no
       left join tiplog tl on tl.closeout = sh.closeout
-     where sh.date_time between cast(getdate() as date) and getdate()
+     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59'  -- cast(getdate() as date) and getdate()
        and tr.department &lt;&gt; '**TRANS**'
        and sg.group_no = @piSalespointGroup 
 union all 
@@ -53,18 +50,26 @@ union all
       join operator op on op.op_code = sh.operator
       join sp_link sl on sl.salespoint = sh.salespoint
       join sp_group sg on sg.group_no = sl.group_no
-     where sh.date_time between cast(getdate() as date) and getdate()
+     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59'  -- cast(getdate() as date) and getdate()
        and sg.group_no = @piSalespointGroup 
        and sh.finalized = 0 
        and sh.final_pend = 1
 )
 
-select operator, salespoint, firstName, lastName, 
-       sum(Revenue) as revenue, sum(Tips) as tips,
-       sum(NonCashTips) as NonCashTips, 
+select operator, salespoint, firstName, lastName, sum(revenue) as revenue, sum(tips) as tips, sum(NonCashTips) as nonCashTips, sum(NumberOfChecks) as NumberOfChecks
+from (
+	 select operator
+		, salespoint
+		, firstName
+		, lastName
+		, sum(Revenue) as revenue
+		, sum(Tips) as tips
+		, sum(NonCashTips) as NonCashTips, 
        case when department = 'Tips' then 0 else count(distinct sale_no) end as NumberOfChecks
-  from cteSales
- group by operator, salespoint, firstName, lastName, department</CommandText>
+	  from cteSales
+	group by operator, salespoint, firstName, lastName, department
+	) f
+group by operator, salespoint, firstName, lastName </CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -93,7 +98,7 @@ select operator, salespoint, firstName, lastName,
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="NonCashTips">
-          <DataField>NonCashTips</DataField>
+          <DataField>nonCashTips</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="NumberOfChecks">
@@ -594,6 +599,45 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox240">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>Average Check</Label>
+                                  <Value>="Average Check: " &amp; round(Fields!Revenue.Value/Fields!NumberOfChecks.Value,2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox239</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox155">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -791,7 +835,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.1</Value>
+                                  <Value>v0.2</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -857,12 +901,13 @@ order by descrip</CommandText>
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
+                    <TablixMember />
                   </TablixMembers>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>3.75in</Height>
+            <Height>3.95in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -871,7 +916,7 @@ order by descrip</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>3.75in</Height>
+        <Height>4in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
