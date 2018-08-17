@@ -18,320 +18,210 @@
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@piSalespointGroup">
-            <Value>=Parameters!piSalespointGroup.Value</Value>
+          <QueryParameter Name="@operator">
+            <Value>=Parameters!operator.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@salespoint">
+            <Value>=Parameters!salespoint.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>if object_id('tempdb..#Closeouts') is not null drop table #Closeouts
-create table #Closeouts
-(
-      spGroup         varchar(25),
-      sale_no         numeric(17,0),
-      invoice_no      numeric(17,0),
-      acct_name       varchar(10),
-      closeout        int, 
-      operator        char(6), 
-      salespoint      char(6), 
-      firstName       varchar(15), 
-      lastName        varchar(20)
-)
-insert into #Closeouts
-    select sg.descrip, sh.sale_no, sh.invoice_no, sh.acct_name, sh.closeout, 
-           sh.operator, sh.salespoint, rtrim(op.first_name), rtrim(op.last_name) 
-      from sale_hdr sh
-      join operator op on op.op_code = sh.operator
-      join closeout cl on cl.closeout = sh.closeout
-      join sp_link sl on sl.salespoint = sh.salespoint
-      join sp_group sg on sg.group_no = sl.group_no
-     where sh.date_time between cast(getdate() as date) and getdate()
-       and sh.closeout &lt;&gt; 3198
-       and sg.group_no = @piSalespointGroup
+        <CommandText>-- ====================================
+-- server report
+-- reports faux finalized sales only
+-- reports all payments
+-- ====================================
+
+-- ====================================
 -- Payments
-select sh.closeout, 
-       sh.operator,
-       sh.salespoint, 
-       sh.firstName, 
-       sh.lastName,
-       sh.spGroup, 
-       cast(pt.sale_no as char(15)) + cast(rtrim(pm.descrip) as char(10)) + cast(pt.Paid as char(10)) as PmtString, -- Pmt
-       pm.descrip as PaymentType, 
-       pt.Paid, 
-       '' as PcString,
-       0 as Revenue,
-       '' as DiscString,
-       0 as DiscountAmt,
-       0 as CashTips,
-       0 as NonCashTips,
-       0 as DeclaredTips, 
-       '' as dcString, 
-       0 as taxAmount, 
-       0 as saleCount, 
-       0 as tableCount,
-       '' as tipoutString,
-       0 as tipoutAmount  
-  from #Closeouts sh
-  join invoices iv on iv.invoice_no = sh.invoice_no
-  join siriusv_PaymentTypePaidBySaleNo pt on pt.sale_no = sh.sale_no
-  join pmt_type pm on pm.pmtype_no = pt.pmttype_no
-union all 
--- Profit Centers
-select sh.closeout,
-       sh.operator,
-       sh.salespoint, 
-       sh.firstName, 
-       sh.lastName,
-       sh.spGroup, 
-       '',
-       '',
-       0,
-       cast(rtrim(pc.descrip) as char(25)) + cast(sum(pr.Revenue) as char(10)) as PcString, 
-       sum(pr.Revenue) as Revenue, 
-       '',
-       0,
-       0,0,0,'',0,0,0,'',0 
-  from #Closeouts sh
-  join closeout cl on cl.closeout = sh.closeout
-  join transact tr on tr.sale_no = sh.sale_no
-  join siriusv_ProfitCenterRevenueByTransNo pr on pr.trans_no = tr.trans_no
-  join prof_ctr pc on pc.pr_ctr_no = pr.pr_ctr_no
- group by sh.closeout, sh.operator, sh.salespoint, 
-          sh.firstName, sh.lastName,sh.spGroup, pc.descrip
-union all 
--- Discounts
-select sh.closeout,
-       sh.operator,
-       sh.salespoint, 
-       sh.firstName, 
-       sh.lastName,
-       sh.spGroup,
-       '',
-       '',
-       0,
-       '',
-       0,
-       cast(sp.descrip as char(25)) + cast(sum(tr.disc_amt) as char(10)) as DiscString,
-       sum(tr.disc_amt) as DiscountAmount, 
-       0,0,0,'',0,0,0,'',0 
-  from #Closeouts sh
-  join closeout cl on cl.closeout = sh.closeout
-  join transact tr on tr.sale_no = sh.sale_no
-  join specials sp on sp.name = tr.special
- where tr.disc_amt &lt;&gt; 0
- group by sh.closeout, sh.operator, sh.salespoint, 
-       sh.firstName, sh.lastName,sh.spGroup, sp.descrip
-union all 
--- Tips
-select tl.closeout,
-       cl.operator,
-       cl.salespoint,
-       rtrim(op.first_name), 
-       rtrim(op.last_name), 
-       sg.descrip, 
-       '',
-       '',
-       0,
-       '',
-       0,
-       '',
-       0,
-       tl.cashtips, tl.noncshtips, tl.dclrd_tips, 
-       '',0,
-       0,0,'',0  
-  from tiplog tl
-  join closeout cl on cl.closeout = tl.closeout
-  join operator op on op.op_code = cl.operator
-  join sp_link sl on sl.salespoint = cl.salespoint
-  join sp_group sg on sg.group_no = sl.group_no
-                  and sg.group_no = @piSalespointGroup
- where tl.closeout in (select closeout from #Closeouts)
+-- ====================================
+;
+with ctePayments
+as
+(
+	select operator
+		, salespoint
+		, firstName
+		, lastName
+		, sale_no
+		, covers
+		, pm.descrip as payment_type
+		, paid
+	from (
+			select sh.operator
+				, sh.salespoint
+				, shs.sale_no
+				, shs.descrip2 as covers
+				, rtrim(op.first_name) as firstName
+				, rtrim(op.last_name) as lastName
+				, case n.number
+					when 1 then sh.pmt_type1
+					when 2 then sh.pmt_type2
+					when 3 then sh.pmt_type3
+					when 4 then sh.pmt_type4
+					else null 
+				  end as pmttype_no
+				, case n.number
+					when 1 then sh.pmt_amt1
+					when 2 then sh.pmt_amt2
+					when 3 then sh.pmt_amt3
+					when 4 then sh.pmt_amt4
+					else null 
+				  end as Paid 
+			from sale_hdr sh
+			cross join numbers n
+			join operator op on op.op_code=sh.operator
+			join sh_save shs on shs.invoice_no=sh.invoice_no 
+			where n.number between 1 and 4
+				and case n.number
+						when 1 then sh.pmt_amt1
+						when 2 then sh.pmt_amt2
+						when 3 then sh.pmt_amt3
+						when 4 then sh.pmt_amt4
+						else null 
+					end&lt;&gt;0
+				and shs.final_pend=1
+				and shs.finalized=0
+				and sh.closeout=0
+				and sh.operator=@operator
+				and sh.salespoint=@salespoint
+		) p
+	join pmt_type pm on pm.pmtype_no = p.pmttype_no
+)
+, 
+-- ====================================
+-- Sales (Faux Finalized Only)
+-- ====================================	
+cteSales
+as
+(
+	select sh.operator
+		, sh.salespoint
+		, sh.sale_no
+		, ts.department
+		, ts.extension-(ts.tax_amount+ts.tax_amt2) as net_revenue
+		, ts.special
+		, ts.disc_amt
+	from sh_save sh
+	join tr_save ts on ts.sale_no=sh.sale_no
+	where sh.finalized=0
+		and sh.final_pend=1
+		and sh.operator=@operator
+		and sh.salespoint=@salespoint
+)
+-- =========
+-- payments
+-- =========
+select operator
+	, salespoint
+	, firstName
+	, lastName
+	, paid as payment_total
+	, concat(sale_no,space(1),cast(payment_type as char(16)),space(1),replicate(' ',7-len(paid)) + cast(paid as varchar)) as pmtString
+	, (select sum(paid) from ctePayments where payment_type='CASH') as cash_payments
+	, (select count(distinct sale_no) from ctePayments) as checkCount
+	, (select sum(covers) from (select distinct sale_no, covers from ctePayments)c) as coverCount
+	, '' as depString
+	, 0  as net_revenue
+	, 0  as tips_total
+	, 0  as spec_amt
+	, '' as specString
+from ctePayments
 
 union all
--- Department/Category Revenue
-select cl.closeout,
-       cl.operator,
-       cl.salespoint, 
-       cl.firstName, 
-       cl.lastName,
-       cl.spGroup,
-       '',
-       '',
-       0,
-       '',
-       0,
-       '',
-       0,0,0,0,
-       department + cast(category as char(15)) + cast(sum(extension) as char(10)) as dcString, 
-       sum(tr.tax_amount + tr.tax_amt2),
-       count(distinct tr.sale_no) as saleCount, 
-       case when cl.acct_name = '*TABLES*' then 1 else 0 end as tableCount, 
-       '', 0 
-  from #Closeouts cl
-  join transact tr on tr.sale_no = cl.sale_no
- where tr.department not in ('**TRANS**') 
- group by cl.closeout,
-          cl.operator,
-          cl.salespoint, 
-          cl.firstName, 
-          cl.lastName,
-          cl.spGroup, department, category, 
-          cl.acct_name
+-- sales
+select operator
+	, '' as salespoint
+	, '' as firstName
+	, '' as lastName
+	, 0  as payment_total
+	, '' as pmtString
+	, 0  as cash_payments
+	, 0  as checkCount
+	, 0  as coverCount 
+	, concat(cast(department as char(28)),space(1),replicate(' ',7-len(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end)) + cast(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as varchar)) as depString
+	, case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as net_revenue
+	, case when department='**TIPS**' then sum(net_revenue) else 0 end as tips_total
+	, 0  as spec_amt
+	, '' as specString
+from cteSales
+group by operator, department
 
-union all 
--- Tipouts
-select closeout, 
-       operator,
-       salespoint, 
-       first_name, 
-       last_name,
-       spGroup,
-       '',
-       '',
-       0,
-       '',
-       0,
-       '',
-       0,0,0,0,
-       '',0,
-       0,0,
-       cast(rtrim(ti.descrip) as char(25)) + cast(tipoutAmount as char(10)) as tipoutString,
-       tipoutAmount 
-  from (select tl.closeout,
-               cl.operator,
-               cl.salespoint, 
-               op.first_name, 
-               op.last_name,
-               sg.descrip as spGroup,
-              case n.number 
-                   when 1 then tl.tipout1
-                   when 2 then tl.tipout2
-                   when 3 then tl.tipout3
-                   when 4 then tl.tipout4
-                   when 5 then tl.tipout5
-                   when 6 then tl.tipout6
-                   else null
-              end as tipoutnumber,
-              case n.number
-                   when 1 then tl.tipoutamt1
-                   when 2 then tl.tipoutamt2
-                   when 3 then tl.tipoutamt3
-                   when 4 then tl.tipoutamt4
-                   when 5 then tl.tipoutamt5
-                   when 6 then tl.tipoutamt6
-                   else null
-              end as tipoutAmount
-         from tiplog tl 
-         join closeout cl on cl.closeout = tl.closeout
-         join operator op on op.op_code = cl.operator
-         join sp_link sl on sl.salespoint = cl.salespoint
-         join sp_group sg on sg.group_no = sl.group_no
-                         and sg.group_no = @piSalespointGroup
-        cross join numbers n
-        where n.number between 1 and 6
-          and case n.number
-                   when 1 then tl.tipoutamt1
-                   when 2 then tl.tipoutamt2
-                   when 3 then tl.tipoutamt3
-                   when 4 then tl.tipoutamt4
-                   when 5 then tl.tipoutamt5
-                   when 6 then tl.tipoutamt6
-                   else null
-              end &lt;&gt; 0
-          and tl.closeout in (select closeout from #Closeouts)) tp
-  join tipouts ti on ti.pri_key = tp.tipoutNumber
-     
-     
-     
-     </CommandText>
+union all
+-- specials
+select operator
+	, '' as salespoint
+	, '' as firstName
+	, '' as lastName
+	, 0  as payment_total
+	, '' as pmtString
+	, 0  as cash_payments
+	, 0  as checkCount
+	, 0  as coverCount 
+	, '' as depString
+	, 0  as net_revenue
+	, 0  as tips_total
+	, disc_amt as spec_amt
+	, concat(isnull(s.descrip,''),space(1),sale_no,space(1),disc_amt) as specString
+from cteSales cs
+join specials s on s.name=cs.special</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="spGroup">
-          <DataField>spGroup</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="operator">
           <DataField>operator</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="PmtString">
-          <DataField>PmtString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="salespoint">
           <DataField>salespoint</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="PaymentType">
-          <DataField>PaymentType</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="firstName">
           <DataField>firstName</DataField>
           <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Paid">
-          <DataField>Paid</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="lastName">
           <DataField>lastName</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Revenue">
-          <DataField>Revenue</DataField>
+        <Field Name="payment_total">
+          <DataField>payment_total</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="PcString">
-          <DataField>PcString</DataField>
+        <Field Name="cash_payments">
+          <DataField>cash_payments</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="pmtString">
+          <DataField>pmtString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="DiscString">
-          <DataField>DiscString</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="DiscountAmt">
-          <DataField>DiscountAmt</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="NonCashTips">
-          <DataField>NonCashTips</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="cashtips">
-          <DataField>CashTips</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="DeclaredTips">
-          <DataField>DeclaredTips</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="closeout">
-          <DataField>closeout</DataField>
+        <Field Name="checkCount">
+          <DataField>checkCount</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="dcString">
-          <DataField>dcString</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="taxAmount">
-          <DataField>taxAmount</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="saleCount">
-          <DataField>saleCount</DataField>
+        <Field Name="coverCount">
+          <DataField>coverCount</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="tipoutString">
-          <DataField>tipoutString</DataField>
+        <Field Name="depString">
+          <DataField>depString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="tableCount">
-          <DataField>tableCount</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="tipoutAmount">
-          <DataField>tipoutAmount</DataField>
+        <Field Name="net_revenue">
+          <DataField>net_revenue</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="tips_total">
+          <DataField>tips_total</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="spec_amt">
+          <DataField>spec_amt</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="specString">
+          <DataField>specString</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -418,6 +308,48 @@ order by descrip</CommandText>
         </Filter>
       </Filters>
     </DataSet>
+    <DataSet Name="GetSalespoints">
+      <Query>
+        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@pFBsp_group">
+            <Value>=Parameters!pFBsp_group.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>select sp.salespoint
+from sales_pt sp
+join sp_link spl on spl.salespoint=sp.salespoint
+join sp_group sg on spl.group_no=sg.group_no
+where sg.descrip in(@pFBsp_group)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="salespoint">
+          <DataField>salespoint</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="GetOperators">
+      <Query>
+        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@salespoint">
+            <Value>=Parameters!salespoint.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>select distinct operator
+from sh_save
+where final_pend=1
+	and finalized=0
+	and salespoint in(@salespoint)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="operator">
+          <DataField>operator</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -482,8 +414,8 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Label>Salespoint Group</Label>
-                                  <Value>=Fields!spGroup.Value</Value>
+                                  <Label>Operator</Label>
+                                  <Value>=Fields!operator.Value</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                   </Style>
@@ -511,17 +443,18 @@ order by descrip</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>0.25in</Height>
+                  <Height>0.2in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="salespoint">
+                        <Textbox Name="spGroup3">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
+                                  <Label>Salespoint</Label>
                                   <Value>=Fields!salespoint.Value</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
@@ -533,7 +466,7 @@ order by descrip</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>salespoint</rd:DefaultName>
+                          <rd:DefaultName>spGroup</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -563,12 +496,13 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value />
                                   <Style>
-                                    <FontFamily>Courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
+                                    <FontFamily>courier New</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox2</rd:DefaultName>
@@ -788,123 +722,6 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox154">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Closeout #</Label>
-                                  <Value>="Closeout #: " &amp; Fields!closeout.Value</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox154</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox238">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Table Count</Label>
-                                  <Value>="Table Count: " &amp; Sum(Fields!tableCount.Value)</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox238</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox239">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Sale Count</Label>
-                                  <Value>="Sale Count: " &amp; Sum(Fields!saleCount.Value)</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox239</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
                         <Textbox Name="Textbox155">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -913,7 +730,7 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Total Receipts</Label>
-                                  <Value>="Total Receipts: " &amp; round(sum(Fields!Revenue.Value),2)</Value>
+                                  <Value>="Total Receipts: " &amp; round(sum(Fields!net_revenue.Value),2)</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -944,45 +761,6 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="taxAmount">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Tax Amount</Label>
-                                  <Value>="Tax: " &amp; round(Sum(Fields!taxAmount.Value), 2)</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>taxAmount</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
                         <Textbox Name="Textbox234">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -991,7 +769,7 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Tips</Label>
-                                  <Value>="Tips: " &amp; round(Sum(Fields!NonCashTips.Value), 2)</Value>
+                                  <Value>="Tips: " &amp; round(first(Fields!tips_total.Value),2)</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1104,7 +882,7 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>SaleNo         Pmt Type       Amount</Value>
+                                  <Value>SaleNo       Payment Type     Amount</Value>
                                   <Style>
                                     <FontFamily>Courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1145,7 +923,7 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!PmtString.Value</Value>
+                                  <Value>=Fields!pmtString.Value</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1214,164 +992,6 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox194">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>Profit Center                 Amount</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox194</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <BottomBorder>
-                              <Style>Solid</Style>
-                            </BottomBorder>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Tablix Name="Tablix7">
-                          <TablixBody>
-                            <TablixColumns>
-                              <TablixColumn>
-                                <Width>2.70001in</Width>
-                              </TablixColumn>
-                            </TablixColumns>
-                            <TablixRows>
-                              <TablixRow>
-                                <Height>0.2in</Height>
-                                <TablixCells>
-                                  <TablixCell>
-                                    <CellContents>
-                                      <Textbox Name="PcString">
-                                        <CanGrow>true</CanGrow>
-                                        <KeepTogether>true</KeepTogether>
-                                        <Paragraphs>
-                                          <Paragraph>
-                                            <TextRuns>
-                                              <TextRun>
-                                                <Value>=Fields!PcString.Value</Value>
-                                                <Style>
-                                                  <FontFamily>courier New</FontFamily>
-                                                  <FontSize>8pt</FontSize>
-                                                </Style>
-                                              </TextRun>
-                                            </TextRuns>
-                                            <Style />
-                                          </Paragraph>
-                                        </Paragraphs>
-                                        <rd:DefaultName>PcString</rd:DefaultName>
-                                        <Style>
-                                          <Border>
-                                            <Color>LightGrey</Color>
-                                            <Style>None</Style>
-                                          </Border>
-                                          <PaddingLeft>2pt</PaddingLeft>
-                                          <PaddingRight>2pt</PaddingRight>
-                                          <PaddingTop>2pt</PaddingTop>
-                                          <PaddingBottom>2pt</PaddingBottom>
-                                        </Style>
-                                      </Textbox>
-                                    </CellContents>
-                                  </TablixCell>
-                                </TablixCells>
-                              </TablixRow>
-                            </TablixRows>
-                          </TablixBody>
-                          <TablixColumnHierarchy>
-                            <TablixMembers>
-                              <TablixMember />
-                            </TablixMembers>
-                          </TablixColumnHierarchy>
-                          <TablixRowHierarchy>
-                            <TablixMembers>
-                              <TablixMember>
-                                <Group Name="Details1" />
-                                <Visibility>
-                                  <Hidden>=iif(Fields!PcString.Value = "", TRUE, FALSE)</Hidden>
-                                </Visibility>
-                              </TablixMember>
-                            </TablixMembers>
-                          </TablixRowHierarchy>
-                          <DataSetName>GatherData</DataSetName>
-                          <Style>
-                            <Border>
-                              <Style>None</Style>
-                            </Border>
-                          </Style>
-                        </Tablix>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox211">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value />
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox211</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
                         <Textbox Name="Textbox219">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -1379,7 +999,7 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>DEPT      CATEGORY            Amount </Value>
+                                  <Value>Department                    Amount </Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1433,7 +1053,7 @@ order by descrip</CommandText>
                                           <Paragraph>
                                             <TextRuns>
                                               <TextRun>
-                                                <Value>=Fields!dcString.Value</Value>
+                                                <Value>=Fields!depString.Value</Value>
                                                 <Style>
                                                   <FontFamily>courier New</FontFamily>
                                                   <FontSize>8pt</FontSize>
@@ -1470,8 +1090,13 @@ order by descrip</CommandText>
                             <TablixMembers>
                               <TablixMember>
                                 <Group Name="Details3" />
+                                <SortExpressions>
+                                  <SortExpression>
+                                    <Value>=Fields!depString.Value</Value>
+                                  </SortExpression>
+                                </SortExpressions>
                                 <Visibility>
-                                  <Hidden>=iif(Fields!dcString.Value = "", TRUE, FALSE)</Hidden>
+                                  <Hidden>=iif(Fields!depString.Value = "", TRUE, FALSE)</Hidden>
                                 </Visibility>
                               </TablixMember>
                             </TablixMembers>
@@ -1483,6 +1108,124 @@ order by descrip</CommandText>
                             </Border>
                           </Style>
                         </Tablix>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="dcTotal">
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=round(Sum(Fields!net_revenue.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Solid</Style>
+                            </TopBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox4">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="dcTotal2">
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>Credit Card Tips</Label>
+                                  <Value>="Credit Card Tips " &amp; space(19-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Left</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -1530,6 +1273,200 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="checkCount1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>coverCount</Label>
+                                  <Value>="No of Covers:" &amp; space(2) &amp; First(Fields!coverCount.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>checkCount1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="checkCount">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>checkCount</Label>
+                                  <Value>="No of Checks:" &amp; space(2) &amp; first(Fields!checkCount.Value)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>checkCount</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="checkCount2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>coverAverage</Label>
+                                  <Value>="Average Cover:" &amp; space(2) &amp; round(sum(Fields!net_revenue.Value)/First(Fields!coverCount.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>checkCount1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox13">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>checkAverage</Label>
+                                  <Value>="Average Check:" &amp; space(2) &amp; round(sum(Fields!net_revenue.Value)/First(Fields!checkCount.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox13</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox11">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox11</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox197">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -1537,7 +1474,7 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Special                       Amount</Value>
+                                  <Value>Special            SaleNo     Amount</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1591,7 +1528,7 @@ order by descrip</CommandText>
                                           <Paragraph>
                                             <TextRuns>
                                               <TextRun>
-                                                <Value>=Fields!DiscString.Value</Value>
+                                                <Value>=Fields!specString.Value</Value>
                                                 <Style>
                                                   <FontFamily>courier New</FontFamily>
                                                   <FontSize>8pt</FontSize>
@@ -1629,7 +1566,7 @@ order by descrip</CommandText>
                               <TablixMember>
                                 <Group Name="Details2" />
                                 <Visibility>
-                                  <Hidden>=iif(Fields!DiscString.Value = "", TRUE, FALSE)</Hidden>
+                                  <Hidden>=iif(Fields!specString.Value = "", TRUE, FALSE)</Hidden>
                                 </Visibility>
                               </TablixMember>
                             </TablixMembers>
@@ -1647,6 +1584,47 @@ order by descrip</CommandText>
                 </TablixRow>
                 <TablixRow>
                   <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="dcTotal3">
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=round(Sum(Fields!spec_amt.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <TopBorder>
+                              <Style>Solid</Style>
+                            </TopBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>1in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -1657,206 +1635,10 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>="CASH YOU OWE" &amp; vbcrlf &amp; round(first(Fields!cash_payments.Value),2)</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox225</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox232">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>Tipout                        Amount</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox232</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <BottomBorder>
-                              <Style>Solid</Style>
-                            </BottomBorder>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Tablix Name="Tablix10">
-                          <TablixBody>
-                            <TablixColumns>
-                              <TablixColumn>
-                                <Width>2.70001in</Width>
-                              </TablixColumn>
-                            </TablixColumns>
-                            <TablixRows>
-                              <TablixRow>
-                                <Height>0.2in</Height>
-                                <TablixCells>
-                                  <TablixCell>
-                                    <CellContents>
-                                      <Textbox Name="tipoutString">
-                                        <CanGrow>true</CanGrow>
-                                        <KeepTogether>true</KeepTogether>
-                                        <Paragraphs>
-                                          <Paragraph>
-                                            <TextRuns>
-                                              <TextRun>
-                                                <Value>=Fields!tipoutString.Value</Value>
-                                                <Style>
-                                                  <FontFamily>courier New</FontFamily>
-                                                  <FontSize>8pt</FontSize>
-                                                </Style>
-                                              </TextRun>
-                                            </TextRuns>
-                                            <Style />
-                                          </Paragraph>
-                                        </Paragraphs>
-                                        <rd:DefaultName>tipoutString</rd:DefaultName>
-                                        <Style>
-                                          <Border>
-                                            <Color>LightGrey</Color>
-                                            <Style>None</Style>
-                                          </Border>
-                                          <PaddingLeft>2pt</PaddingLeft>
-                                          <PaddingRight>2pt</PaddingRight>
-                                          <PaddingTop>2pt</PaddingTop>
-                                          <PaddingBottom>2pt</PaddingBottom>
-                                        </Style>
-                                      </Textbox>
-                                    </CellContents>
-                                  </TablixCell>
-                                </TablixCells>
-                              </TablixRow>
-                            </TablixRows>
-                          </TablixBody>
-                          <TablixColumnHierarchy>
-                            <TablixMembers>
-                              <TablixMember />
-                            </TablixMembers>
-                          </TablixColumnHierarchy>
-                          <TablixRowHierarchy>
-                            <TablixMembers>
-                              <TablixMember>
-                                <Group Name="Details4" />
-                                <Visibility>
-                                  <Hidden>=iif(Fields!tipoutString.Value = "", TRUE, FALSE)</Hidden>
-                                </Visibility>
-                              </TablixMember>
-                            </TablixMembers>
-                          </TablixRowHierarchy>
-                          <DataSetName>GatherData</DataSetName>
-                          <Style>
-                            <Border>
-                              <Style>None</Style>
-                            </Border>
-                          </Style>
-                        </Tablix>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox223">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value />
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox223</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.4in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox236">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value />
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>14pt</FontSize>
+                                    <FontSize>12pt</FontSize>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -1865,7 +1647,7 @@ order by descrip</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox236</rd:DefaultName>
+                          <rd:DefaultName>Textbox225</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1926,7 +1708,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.1</Value>
+                                  <Value>v 0.2</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -1971,11 +1753,6 @@ order by descrip</CommandText>
                       <GroupExpression>=Fields!operator.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
-                  <SortExpressions>
-                    <SortExpression>
-                      <Value>=Fields!closeout.Value</Value>
-                    </SortExpression>
-                  </SortExpressions>
                   <TablixMembers>
                     <TablixMember>
                       <KeepWithGroup>After</KeepWithGroup>
@@ -2008,21 +1785,6 @@ order by descrip</CommandText>
                       <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
-                      <Visibility>
-                        <Hidden>=iif(sum(Fields!tableCount.Value) = sum(Fields!saleCount.Value), TRUE, FALSE)</Hidden>
-                      </Visibility>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
-                    <TablixMember>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
-                    <TablixMember>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
-                    <TablixMember>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
-                    <TablixMember>
                       <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
@@ -2040,7 +1802,7 @@ order by descrip</CommandText>
                         <TablixMember />
                       </TablixMembers>
                       <Visibility>
-                        <Hidden>=iif(Fields!PmtString.Value = "", TRUE, FALSE)</Hidden>
+                        <Hidden>=iif(Fields!pmtString.Value = "", TRUE, FALSE)</Hidden>
                       </Visibility>
                     </TablixMember>
                     <TablixMember>
@@ -2065,9 +1827,6 @@ order by descrip</CommandText>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
-                      <Visibility>
-                        <Hidden>=iif(sum(Fields!DiscountAmt.Value) = 0, TRUE, FALSE)</Hidden>
-                      </Visibility>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
@@ -2077,9 +1836,12 @@ order by descrip</CommandText>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
-                      <Visibility>
-                        <Hidden>=iif(sum(fields!NonCashTips.Value) = 0, TRUE, FALSE)</Hidden>
-                      </Visibility>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
@@ -2095,11 +1857,14 @@ order by descrip</CommandText>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
                   </TablixMembers>
+                  <Visibility>
+                    <Hidden>=iif(Fields!operator.Value = "", TRUE, FALSE)</Hidden>
+                  </Visibility>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>7.55in</Height>
+            <Height>7.7in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -2108,7 +1873,7 @@ order by descrip</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>9.41667in</Height>
+        <Height>8.35in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
@@ -2132,12 +1897,6 @@ order by descrip</CommandText>
     </ReportParameter>
     <ReportParameter Name="pFBsp_group">
       <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>FBMembership</DataSetName>
-          <ValueField>SalespointGroup</ValueField>
-        </DataSetReference>
-      </DefaultValue>
       <Prompt>Salespoint Group</Prompt>
       <ValidValues>
         <DataSetReference>
@@ -2147,21 +1906,38 @@ order by descrip</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="piSalespointGroup">
-      <DataType>Integer</DataType>
+    <ReportParameter Name="salespoint">
+      <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>SalespointGroup</DataSetName>
-          <ValueField>group_no</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>HMFB71 </Value>
+        </Values>
       </DefaultValue>
-      <Hidden>true</Hidden>
+      <Prompt>Salespoint</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>GetSalespoints</DataSetName>
+          <ValueField>salespoint</ValueField>
+          <LabelField>salespoint</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="operator">
+      <DataType>String</DataType>
+      <Prompt>Operator</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>GetOperators</DataSetName>
+          <ValueField>operator</ValueField>
+          <LabelField>operator</LabelField>
+        </DataSetReference>
+      </ValidValues>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfRows>7</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -2175,8 +1951,13 @@ order by descrip</CommandText>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>operator</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>piSalespointGroup</ParameterName>
+          <ParameterName>salespoint</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
