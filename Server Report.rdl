@@ -43,6 +43,7 @@ as
 		, firstName
 		, lastName
 		, sale_no
+		, minutes_check_open
 		, covers
 		, pm.descrip as payment_type
 		, paid
@@ -50,6 +51,7 @@ as
 			select sh.operator
 				, sh.salespoint
 				, shs.sale_no
+				, datediff(minute,shs.orig_dt,shs.date_time) as minutes_check_open
 				, shs.descrip2 as covers
 				, rtrim(op.first_name) as firstName
 				, rtrim(op.last_name) as lastName
@@ -120,6 +122,7 @@ select operator
 	, (select sum(paid) from ctePayments where payment_type='CASH') as cash_payments
 	, (select count(distinct sale_no) from ctePayments) as checkCount
 	, (select sum(covers) from (select distinct sale_no, covers from ctePayments)c) as coverCount
+	, (select avg(minutes_check_open) from (select distinct sale_no, minutes_check_open from ctePayments)c) as avg_check_time
 	, '' as depString
 	, 0  as net_revenue
 	, 0  as tips_total
@@ -129,22 +132,27 @@ from ctePayments
 
 union all
 -- sales
-select operator
-	, '' as salespoint
-	, '' as firstName
-	, '' as lastName
-	, 0  as payment_total
-	, '' as pmtString
-	, 0  as cash_payments
-	, 0  as checkCount
-	, 0  as coverCount 
-	, concat(cast(department as char(28)),space(1),replicate(' ',7-len(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end)) + cast(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as varchar)) as depString
-	, case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as net_revenue
-	, case when department='**TIPS**' then sum(net_revenue) else 0 end as tips_total
-	, 0  as spec_amt
-	, '' as specString
-from cteSales
-group by operator, department
+select *
+from (
+		select operator
+			, '' as salespoint
+			, '' as firstName
+			, '' as lastName
+			, 0  as payment_total
+			, '' as pmtString
+			, 0  as cash_payments
+			, 0  as checkCount
+			, 0  as coverCount
+			, 0  as avg_check_time 
+			, concat(cast(department as char(28)),space(1),replicate(' ',7-len(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end)) + cast(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as varchar)) as depString
+			, case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as net_revenue
+			, case when department='**TIPS**' then sum(net_revenue) else 0 end as tips_total
+			, 0  as spec_amt
+			, '' as specString
+		from cteSales
+		group by operator, department
+	) s
+where depString not like '**%'
 
 union all
 -- specials
@@ -157,11 +165,12 @@ select operator
 	, 0  as cash_payments
 	, 0  as checkCount
 	, 0  as coverCount 
+	, 0  as avg_check_time
 	, '' as depString
 	, 0  as net_revenue
 	, 0  as tips_total
 	, disc_amt as spec_amt
-	, concat(isnull(s.descrip,''),space(1),sale_no,space(1),disc_amt) as specString
+	, concat(cast(isnull(s.descrip,'') as char(15)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
 from cteSales cs
 join specials s on s.name=cs.special</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
@@ -201,6 +210,10 @@ join specials s on s.name=cs.special</CommandText>
         </Field>
         <Field Name="coverCount">
           <DataField>coverCount</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="avg_check_time">
+          <DataField>avg_check_time</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="depString">
@@ -1359,7 +1372,7 @@ where final_pend=1
                               <TextRuns>
                                 <TextRun>
                                   <Label>coverAverage</Label>
-                                  <Value>="Average Cover:" &amp; space(2) &amp; round(sum(Fields!net_revenue.Value)/First(Fields!coverCount.Value),2)</Value>
+                                  <Value>="Average Cover:" &amp; space(2) &amp; IIf(First(Fields!coverCount.Value)=0, 0, round(sum(Fields!net_revenue.Value)/iif(First(Fields!coverCount.Value)=0, 1, First(Fields!coverCount.Value)),2))</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1398,7 +1411,46 @@ where final_pend=1
                               <TextRuns>
                                 <TextRun>
                                   <Label>checkAverage</Label>
-                                  <Value>="Average Check:" &amp; space(2) &amp; round(sum(Fields!net_revenue.Value)/First(Fields!checkCount.Value),2)</Value>
+                                  <Value>="Average Check:" &amp; space(2) &amp; iif(First(Fields!checkCount.Value)=0,0,round(sum(Fields!net_revenue.Value)/iif(First(Fields!checkCount.Value)=0,1,First(Fields!checkCount.Value)),2))</Value>
+                                  <Style>
+                                    <FontFamily>courier New</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox13</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox15">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Label>averageCheckTime</Label>
+                                  <Value>="Average Check Time:" &amp; space(2) &amp; sum(Fields!avg_check_time.Value) &amp; " minutes"</Value>
                                   <Style>
                                     <FontFamily>courier New</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1708,7 +1760,7 @@ where final_pend=1
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.2</Value>
+                                  <Value>v 0.3</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -1856,6 +1908,9 @@ where final_pend=1
                     <TablixMember>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
                   </TablixMembers>
                   <Visibility>
                     <Hidden>=iif(Fields!operator.Value = "", TRUE, FALSE)</Hidden>
@@ -1864,7 +1919,7 @@ where final_pend=1
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>7.7in</Height>
+            <Height>7.9in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -1908,11 +1963,6 @@ where final_pend=1
     </ReportParameter>
     <ReportParameter Name="salespoint">
       <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>HMFB71 </Value>
-        </Values>
-      </DefaultValue>
       <Prompt>Salespoint</Prompt>
       <ValidValues>
         <DataSetReference>
@@ -1936,8 +1986,8 @@ where final_pend=1
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>7</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -1945,18 +1995,18 @@ where final_pend=1
           <ParameterName>pResort</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
           <ParameterName>pFBsp_group</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>operator</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>salespoint</ParameterName>
         </CellDefinition>
       </CellDefinitions>
