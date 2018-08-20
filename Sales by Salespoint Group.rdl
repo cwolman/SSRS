@@ -92,7 +92,7 @@ from (
 					replicate(' ',4-len(count(distinct sale_no))) + cast(count(distinct sale_no) as varchar), 
 					space(2),
 					replicate(' ',6-len((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100)) + cast((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100 as varchar),
-					space(4),
+					space(7),
 					replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 					) as spString
 		from cteSales
@@ -124,7 +124,7 @@ from (
 		select sp_group
 			, sum(net_revenue) as op_sales_total
 			, concat(cast(firstName + ' ' + lastName as char(26)),
-					space(1),
+					space(4),
 					replicate(' ',8-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)) as opString
 		from cteSales
 		group by sp_group, operator, firstName, lastName
@@ -146,7 +146,7 @@ select sp_group
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
 			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
-			space(3),
+			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as depString
 	, sum(net_revenue) as dep_net_revenue
@@ -180,7 +180,7 @@ select sp_group
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
 			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
-			space(3),
+			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as catString
 	, sum(net_revenue) as cat_net_revenue
@@ -214,7 +214,7 @@ select sp_group
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
 			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
-			space(3),
+			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as itemString
 	, sum(net_revenue) as item_net_revenue
@@ -244,7 +244,7 @@ select sp_group
 	, '' as itemString
 	, 0  as item_revenue
 	, sum(disc_amt) as spec_amt
-	, concat(cast(isnull(s.descrip,'') as char(23)),
+	, concat(cast(isnull(s.descrip,'') as char(26)),
 			space(1),
 			replicate(' ',3-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(1),
@@ -276,7 +276,7 @@ select sg.descrip
 	, 0  as spec_amt
 	, '' as specString
 	, concat(substring(replace(tag_line,'''',''),charindex(' of', tag_line)+4,33),
-			  space(1),
+			  space(4),
 			  substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1)
 			 ) as voidString
 	, cast(substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1) as integer) as voidTotal
@@ -462,7 +462,7 @@ order by descrip</CommandText>
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>2.70001in</Width>
+                  <Width>2.9in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -520,7 +520,7 @@ order by descrip</CommandText>
                                   <Label>Salespoint Group</Label>
                                   <Value>=Parameters!pFBsp_group.Label</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -597,7 +597,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>Sales by Salespoint Group</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -675,7 +675,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=Globals!ExecutionTime</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -716,7 +716,7 @@ order by descrip</CommandText>
                                   <Label>Revenue</Label>
                                   <Value>="Revenue: " &amp; round(sum(Fields!dep_net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -755,7 +755,7 @@ order by descrip</CommandText>
                                   <Label>Tax Amount</Label>
                                   <Value>="Tax: " &amp; round(Sum(Fields!tax_amount.Value), 2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -828,9 +828,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Register     Qty     %       Amount</Value>
+                                  <Value>Register     Qty     %          Amount</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -866,7 +866,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -884,7 +884,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!spString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -953,7 +953,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!sp_sales_total.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -974,7 +974,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1032,9 +1032,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Department   Qty      %      Amount </Value>
+                                  <Value>Department   Qty      %         Amount </Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1070,7 +1070,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -1088,7 +1088,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!depString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1159,7 +1159,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!dep_net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1180,7 +1180,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1239,9 +1239,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Category     Qty      %      Amount </Value>
+                                  <Value>Category     Qty      %         Amount </Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1277,7 +1277,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -1295,7 +1295,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!catString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1361,7 +1361,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!cat_net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1382,7 +1382,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1441,9 +1441,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Item         Qty      %      Amount </Value>
+                                  <Value>Item         Qty      %         Amount </Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1479,7 +1479,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -1497,7 +1497,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!itemString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1568,7 +1568,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!item_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1589,7 +1589,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1648,9 +1648,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Special                  Qty Amount</Value>
+                                  <Value>Special                    Qty  Amount</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1686,7 +1686,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -1704,7 +1704,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!specString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1775,7 +1775,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!spec_amt.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1796,7 +1796,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -1855,9 +1855,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Operator                     Amount</Value>
+                                  <Value>Operator                        Amount</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1893,7 +1893,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -1911,7 +1911,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!opString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1977,7 +1977,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!op_sales_total.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1998,7 +1998,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -2060,9 +2060,9 @@ order by descrip</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Void Item                      Qty</Value>
+                                  <Value>Void Item                         Qty</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -2098,7 +2098,7 @@ order by descrip</CommandText>
                           <TablixBody>
                             <TablixColumns>
                               <TablixColumn>
-                                <Width>2.70001in</Width>
+                                <Width>2.9in</Width>
                               </TablixColumn>
                             </TablixColumns>
                             <TablixRows>
@@ -2116,7 +2116,7 @@ order by descrip</CommandText>
                                               <TextRun>
                                                 <Value>=Fields!voidString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>Courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -2136,6 +2136,7 @@ order by descrip</CommandText>
                                           <PaddingBottom>2pt</PaddingBottom>
                                         </Style>
                                       </Textbox>
+                                      <rd:Selected>true</rd:Selected>
                                     </CellContents>
                                   </TablixCell>
                                 </TablixCells>
@@ -2187,7 +2188,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=round(Sum(Fields!voidTotal.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -2208,7 +2209,7 @@ order by descrip</CommandText>
                             </TopBorder>
                             <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>8pt</PaddingRight>
+                            <PaddingRight>25pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
@@ -2274,7 +2275,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.1</Value>
+                                  <Value>v0.2</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -2350,7 +2351,7 @@ order by descrip</CommandText>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
             <Height>7.95in</Height>
-            <Width>2.70001in</Width>
+            <Width>2.9in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -2361,9 +2362,9 @@ order by descrip</CommandText>
         <Height>7.95in</Height>
         <Style />
       </Body>
-      <Width>2.70001in</Width>
+      <Width>2.9in</Width>
       <Page>
-        <PageWidth>2.7in</PageWidth>
+        <PageWidth>2.9in</PageWidth>
         <Style />
       </Page>
     </ReportSection>
