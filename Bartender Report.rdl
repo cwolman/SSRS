@@ -17,66 +17,66 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <CommandText>declare @piSalespointGroup int=48
+        <QueryParameters>
+          <QueryParameter Name="@operator">
+            <Value>=Parameters!operator.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@salespoint">
+            <Value>=Parameters!salespoint.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>-- ====================================
+-- bartender report
+-- reports faux finalized sales only
+-- ====================================
 
-set transaction isolation level read uncommitted 
-
+-- ====================================
+-- Sales (Faux Finalized Only)
+-- ====================================	
+set transaction isolation level read uncommitted
 ;
 with cteSales
 as
 (
-    select sh.sale_no, sh.operator, sh.salespoint, rtrim(op.first_name) firstName, rtrim(op.last_name) lastName, 
-           case when tr.department like '**%' then 'Tips' else 'Revenue' end as department, 
-           case when tr.department like '**%' then 0 else tr.extension end as Revenue, 
-           case when tr.department like '**%' then tr.extension else 0 end as Tips, 
-           case when tr.department like '**%' then tl.noncshtips else 0 end as NonCashTips
-      from sale_hdr sh
-      join transact tr on tr.sale_no = sh.sale_no
-      join operator op on op.op_code = sh.operator
-      join sp_link sl on sl.salespoint = sh.salespoint
-      join sp_group sg on sg.group_no = sl.group_no
-      left join tiplog tl on tl.closeout = sh.closeout
-     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59'  -- cast(getdate() as date) and getdate()
-       and tr.department &lt;&gt; '**TRANS**'
-       and sg.group_no = @piSalespointGroup 
-union all 
-    select sh.sale_no, sh.operator, sh.salespoint, rtrim(op.first_name), rtrim(op.last_name), 
-           case when ts.department like '**%' then 'Tips' else 'Revenue' end as department, 
-           case when ts.department like '**%' then 0 else ts.extension end as Revenue, 
-           case when ts.department like '**%' then ts.extension else 0 end as Tips, 
-           0 
-      from sh_save sh
-      join tr_save ts on ts.sale_no = sh.sale_no
-      join operator op on op.op_code = sh.operator
-      join sp_link sl on sl.salespoint = sh.salespoint
-      join sp_group sg on sg.group_no = sl.group_no
-     where sh.date_time between '2018-08-14' and '2018-08-14 23:59:59'  -- cast(getdate() as date) and getdate()
-       and sg.group_no = @piSalespointGroup 
-       and sh.finalized = 0 
-       and sh.final_pend = 1
+	select sh.operator
+		, rtrim(op.first_name) as firstName
+		, rtrim(op.last_name) as lastName
+		, sh.salespoint
+		, sh.sale_no
+		, ts.department
+		, ts.extension-(ts.tax_amount+ts.tax_amt2) as net_revenue
+	from sh_save sh
+	join tr_save ts on ts.sale_no=sh.sale_no
+	join operator op on op.op_code=sh.operator
+	where sh.finalized=0
+		and sh.final_pend=1
+		and sh.operator=@operator
+		and sh.salespoint=@salespoint
 )
 
-select operator, salespoint, firstName, lastName, sum(revenue) as revenue, sum(tips) as tips, sum(NonCashTips) as nonCashTips, sum(NumberOfChecks) as NumberOfChecks
+-- sales
+select operator
+	, salespoint
+	, firstName
+	, lastName
+	, min(checkCount) as checkCount
+	, sum(net_revenue) as net_revenue
+	, min(tips_Total) as tips_total
 from (
-	 select operator
-		, salespoint
-		, firstName
-		, lastName
-		, sum(Revenue) as revenue
-		, sum(Tips) as tips
-		, sum(NonCashTips) as NonCashTips, 
-       case when department = 'Tips' then 0 else count(distinct sale_no) end as NumberOfChecks
-	  from cteSales
-	group by operator, salespoint, firstName, lastName, department
-	) f
-group by operator, salespoint, firstName, lastName </CommandText>
+		select operator
+			, salespoint
+			, firstName
+			, lastName
+			, (select count(distinct sale_no) from cteSales) as checkCount
+			, case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as net_revenue
+			, case when department='**TIPS**' then sum(net_revenue) else 0 end as tips_total
+		from cteSales
+		group by operator, salespoint, firstName, lastName, department
+	) s
+group by operator, salespoint, firstName, lastName</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="Revenue">
-          <DataField>revenue</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
         <Field Name="operator">
           <DataField>operator</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -93,17 +93,17 @@ group by operator, salespoint, firstName, lastName </CommandText>
           <DataField>lastName</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="tips">
-          <DataField>tips</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="NonCashTips">
-          <DataField>nonCashTips</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="NumberOfChecks">
-          <DataField>NumberOfChecks</DataField>
+        <Field Name="checkCount">
+          <DataField>checkCount</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="net_revenue">
+          <DataField>net_revenue</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="tips_total">
+          <DataField>tips_total</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -116,6 +116,7 @@ group by operator, salespoint, firstName, lastName </CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
+
 select rtrim(descrip) as spGroup
 	, group_no
   from sp_group
@@ -190,6 +191,52 @@ order by descrip</CommandText>
         </Filter>
       </Filters>
     </DataSet>
+    <DataSet Name="GetSalespoints">
+      <Query>
+        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@pFBsp_group">
+            <Value>=Parameters!pFBsp_group.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>set transaction isolation level read uncommitted
+
+select sp.salespoint
+from sales_pt sp
+join sp_link spl on spl.salespoint=sp.salespoint
+join sp_group sg on spl.group_no=sg.group_no
+where sg.descrip in(@pFBsp_group)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="salespoint">
+          <DataField>salespoint</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="GetOperators">
+      <Query>
+        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@salespoint">
+            <Value>=Parameters!salespoint.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>set transaction isolation level read uncommitted
+
+select distinct operator
+from sh_save
+where final_pend=1
+	and finalized=0
+	and salespoint in(@salespoint)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="operator">
+          <DataField>operator</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -247,46 +294,6 @@ order by descrip</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="spGroup2">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Salespoint Group</Label>
-                                  <Value>=First(Fields!spGroup.Value, "SalespointGroup")</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style>
-                                <TextAlign>Center</TextAlign>
-                              </Style>
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>spGroup</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.25in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
                         <Textbox Name="salespoint">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -296,7 +303,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=Fields!salespoint.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -373,7 +380,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>Bartender Report</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -451,7 +458,7 @@ order by descrip</CommandText>
                                 <TextRun>
                                   <Value>=Globals!ExecutionTime</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -492,7 +499,7 @@ order by descrip</CommandText>
                                   <Label>Operator ID</Label>
                                   <Value>="Operator ID: " &amp; Fields!operator.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -531,7 +538,7 @@ order by descrip</CommandText>
                                   <Label>Operator Name</Label>
                                   <Value>="Name: " &amp; Fields!firstName.Value &amp; " " &amp; Fields!lastName.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -568,9 +575,9 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Number of Checks</Label>
-                                  <Value>="Number of Checks: " &amp; Sum(Fields!NumberOfChecks.Value)</Value>
+                                  <Value>="Number of Checks: " &amp; Fields!checkCount.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -607,9 +614,9 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Average Check</Label>
-                                  <Value>="Average Check: " &amp; round(Fields!Revenue.Value/Fields!NumberOfChecks.Value,2)</Value>
+                                  <Value>="Average Check: " &amp; round(Fields!net_revenue.Value/Fields!checkCount.Value,2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -646,9 +653,9 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Total Receipts</Label>
-                                  <Value>="Total Receipts: " &amp; round(sum(Fields!Revenue.Value),2)</Value>
+                                  <Value>="Total Receipts: " &amp; round(sum(Fields!net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -685,9 +692,9 @@ order by descrip</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Total Tips</Label>
-                                  <Value>="Total Tips: " &amp; round(Sum(Fields!tips.Value), 2)</Value>
+                                  <Value>="Total Tips: " &amp; round(Fields!tips_total.Value, 2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -701,86 +708,6 @@ order by descrip</CommandText>
                               <Color>LightGrey</Color>
                               <Style>None</Style>
                             </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox209">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Non-Cash Tips</Label>
-                                  <Value>="Non-Cash Tips: " &amp; round(Sum(Fields!NonCashTips.Value),2)</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox209</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.4in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox236">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>**Non-cash tips only calculated after closeout is complete**</Value>
-                                  <Style>
-                                    <FontFamily>courier New</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style>
-                                <TextAlign>Center</TextAlign>
-                              </Style>
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox236</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -835,7 +762,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.2</Value>
+                                  <Value>v0.4</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -899,15 +826,12 @@ order by descrip</CommandText>
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
                   </TablixMembers>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>3.95in</Height>
+            <Height>3.1in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -916,7 +840,7 @@ order by descrip</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>4in</Height>
+        <Height>3.1in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
@@ -955,36 +879,53 @@ order by descrip</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="piSalespointGroup">
+    <ReportParameter Name="salespoint">
       <DataType>String</DataType>
-      <DefaultValue>
+      <Prompt>Salespoint</Prompt>
+      <ValidValues>
         <DataSetReference>
-          <DataSetName>SalespointGroup</DataSetName>
-          <ValueField>group_no</ValueField>
+          <DataSetName>GetSalespoints</DataSetName>
+          <ValueField>salespoint</ValueField>
+          <LabelField>salespoint</LabelField>
         </DataSetReference>
-      </DefaultValue>
-      <Hidden>true</Hidden>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="operator">
+      <DataType>String</DataType>
+      <Prompt>Operator</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>GetOperators</DataSetName>
+          <ValueField>operator</ValueField>
+          <LabelField>operator</LabelField>
+        </DataSetReference>
+      </ValidValues>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>piSalespointGroup</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>pFBsp_group</ParameterName>
-        </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>pResort</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>pFBsp_group</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>salespoint</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>operator</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
