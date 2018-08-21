@@ -201,11 +201,14 @@ order by descrip</CommandText>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
-select sp.salespoint
-from sales_pt sp
-join sp_link spl on spl.salespoint=sp.salespoint
+select sh.salespoint
+from sh_save sh
+join sp_link spl on spl.salespoint=sh.salespoint
 join sp_group sg on spl.group_no=sg.group_no
-where sg.descrip in(@pFBsp_group)</CommandText>
+where final_pend=1
+	and finalized=0
+	and sg.descrip in(@pFBsp_group)
+order by sg.descrip</CommandText>
       </Query>
       <Fields>
         <Field Name="salespoint">
@@ -224,15 +227,22 @@ where sg.descrip in(@pFBsp_group)</CommandText>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
-select distinct operator
-from sh_save
-where final_pend=1
-	and finalized=0
-	and salespoint in(@salespoint)</CommandText>
+select distinct sh.operator
+	, concat(rtrim(op.last_name),', ',rtrim(op.first_name)) as op_name
+from sh_save sh
+join operator op on sh.operator=op.op_code
+where sh.final_pend=1
+	and sh.finalized=0
+	and sh.salespoint in(@salespoint)
+order by sh.operator</CommandText>
       </Query>
       <Fields>
         <Field Name="operator">
           <DataField>operator</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="op_name">
+          <DataField>op_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -762,7 +772,7 @@ where final_pend=1
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.4</Value>
+                                  <Value>v0.5</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -897,7 +907,7 @@ where final_pend=1
         <DataSetReference>
           <DataSetName>GetOperators</DataSetName>
           <ValueField>operator</ValueField>
-          <LabelField>operator</LabelField>
+          <LabelField>op_name</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
