@@ -17,15 +17,12 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@operator">
-            <Value>=Parameters!operator.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@salespoint">
-            <Value>=Parameters!salespoint.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>-- ====================================
+        <CommandText>declare @operator char(6)='HMDCR'
+declare @salespoint char(6)='HMFB71'
+declare @startdate date='2018-08-17'
+declare @enddate datetime='2018-08-17 23:59:59'
+
+-- ====================================
 -- server report
 -- reports faux finalized sales only
 -- reports all payments
@@ -34,6 +31,7 @@
 -- ====================================
 -- Payments
 -- ====================================
+set transaction isolation level read uncommitted
 ;
 with ctePayments
 as
@@ -81,11 +79,12 @@ as
 						when 4 then sh.pmt_amt4
 						else null 
 					end&lt;&gt;0
-				and shs.final_pend=1
-				and shs.finalized=0
-				and sh.closeout=0
+				--and shs.final_pend=1
+				--and shs.finalized=0
+				--and sh.closeout=0
 				and sh.operator=@operator
 				and sh.salespoint=@salespoint
+				and sh.date_time between @startdate and @enddate
 		) p
 	join pmt_type pm on pm.pmtype_no = p.pmttype_no
 )
@@ -105,10 +104,11 @@ as
 		, ts.disc_amt
 	from sh_save sh
 	join tr_save ts on ts.sale_no=sh.sale_no
-	where sh.finalized=0
-		and sh.final_pend=1
-		and sh.operator=@operator
+	where --sh.finalized=0
+		--and sh.final_pend=1
+		sh.operator=@operator
 		and sh.salespoint=@salespoint
+		and sh.date_time between @startdate and @enddate
 )
 -- =========
 -- payments
@@ -170,7 +170,7 @@ select operator
 	, 0  as net_revenue
 	, 0  as tips_total
 	, disc_amt as spec_amt
-	, concat(cast(isnull(s.descrip,'') as char(15)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
+	, concat(cast(isnull(s.descrip,'') as char(16)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
 from cteSales cs
 join specials s on s.name=cs.special</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
@@ -273,6 +273,7 @@ join specials s on s.name=cs.special</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
+
 select rtrim(descrip) as spGroup
 	, group_no
   from sp_group
@@ -329,7 +330,9 @@ order by descrip</CommandText>
             <Value>=Parameters!pFBsp_group.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>select sp.salespoint
+        <CommandText>set transaction isolation level read uncommitted
+
+select sp.salespoint
 from sales_pt sp
 join sp_link spl on spl.salespoint=sp.salespoint
 join sp_group sg on spl.group_no=sg.group_no
@@ -350,7 +353,9 @@ where sg.descrip in(@pFBsp_group)</CommandText>
             <Value>=Parameters!salespoint.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>select distinct operator
+        <CommandText>set transaction isolation level read uncommitted
+
+select distinct operator
 from sh_save
 where final_pend=1
 	and finalized=0
@@ -430,7 +435,7 @@ where final_pend=1
                                   <Label>Operator</Label>
                                   <Value>=Fields!operator.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -470,7 +475,7 @@ where final_pend=1
                                   <Label>Salespoint</Label>
                                   <Value>=Fields!salespoint.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -548,7 +553,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>Server Report</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -626,7 +631,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>=Globals!ExecutionTime</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -667,7 +672,7 @@ where final_pend=1
                                   <Label>Operator ID</Label>
                                   <Value>="Operator ID: " &amp; Fields!operator.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -706,7 +711,7 @@ where final_pend=1
                                   <Label>Operator Name</Label>
                                   <Value>="Name: " &amp; Fields!firstName.Value &amp; " " &amp; Fields!lastName.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -745,7 +750,7 @@ where final_pend=1
                                   <Label>Total Receipts</Label>
                                   <Value>="Total Receipts: " &amp; round(sum(Fields!net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -784,7 +789,7 @@ where final_pend=1
                                   <Label>Tips</Label>
                                   <Value>="Tips: " &amp; round(first(Fields!tips_total.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -897,7 +902,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>SaleNo       Payment Type     Amount</Value>
                                   <Style>
-                                    <FontFamily>Courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -938,7 +943,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>=Fields!pmtString.Value</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1014,7 +1019,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>Department                    Amount </Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1068,7 +1073,7 @@ where final_pend=1
                                               <TextRun>
                                                 <Value>=Fields!depString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1138,7 +1143,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>=round(Sum(Fields!net_revenue.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1157,11 +1162,12 @@ where final_pend=1
                               <Style>Solid</Style>
                             </TopBorder>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingRight>19pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -1218,7 +1224,7 @@ where final_pend=1
                                   <Label>Credit Card Tips</Label>
                                   <Value>="Credit Card Tips " &amp; space(19-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1296,7 +1302,7 @@ where final_pend=1
                                   <Label>coverCount</Label>
                                   <Value>="No of Covers:" &amp; space(2) &amp; First(Fields!coverCount.Value)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1335,7 +1341,7 @@ where final_pend=1
                                   <Label>checkCount</Label>
                                   <Value>="No of Checks:" &amp; space(2) &amp; first(Fields!checkCount.Value)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1374,7 +1380,7 @@ where final_pend=1
                                   <Label>coverAverage</Label>
                                   <Value>="Average Cover:" &amp; space(2) &amp; IIf(First(Fields!coverCount.Value)=0, 0, round(sum(Fields!net_revenue.Value)/iif(First(Fields!coverCount.Value)=0, 1, First(Fields!coverCount.Value)),2))</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1413,7 +1419,7 @@ where final_pend=1
                                   <Label>checkAverage</Label>
                                   <Value>="Average Check:" &amp; space(2) &amp; iif(First(Fields!checkCount.Value)=0,0,round(sum(Fields!net_revenue.Value)/iif(First(Fields!checkCount.Value)=0,1,First(Fields!checkCount.Value)),2))</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1452,7 +1458,7 @@ where final_pend=1
                                   <Label>averageCheckTime</Label>
                                   <Value>="Average Check Time:" &amp; space(2) &amp; sum(Fields!avg_check_time.Value) &amp; " minutes"</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1528,7 +1534,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>Special            SaleNo     Amount</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1582,7 +1588,7 @@ where final_pend=1
                                               <TextRun>
                                                 <Value>=Fields!specString.Value</Value>
                                                 <Style>
-                                                  <FontFamily>courier New</FontFamily>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
                                                   <FontSize>8pt</FontSize>
                                                 </Style>
                                               </TextRun>
@@ -1647,7 +1653,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>=round(Sum(Fields!spec_amt.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1666,11 +1672,12 @@ where final_pend=1
                               <Style>Solid</Style>
                             </TopBorder>
                             <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingRight>19pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -1689,7 +1696,7 @@ where final_pend=1
                                 <TextRun>
                                   <Value>="CASH YOU OWE" &amp; vbcrlf &amp; round(first(Fields!cash_payments.Value),2)</Value>
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>12pt</FontSize>
                                   </Style>
                                 </TextRun>
@@ -1760,7 +1767,7 @@ where final_pend=1
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.3</Value>
+                                  <Value>v 0.4</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
