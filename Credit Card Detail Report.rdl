@@ -176,38 +176,6 @@ order by sale_no, date_time</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="FBMembership">
-      <Query>
-        <DataSourceName>Domo_Lookup</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@User">
-            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
-            <rd:UserDefined>true</rd:UserDefined>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandType>StoredProcedure</CommandType>
-        <CommandText>GetFBMembership</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="IsMemberOfGroup">
-          <DataField>IsMemberOfGroup</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
-        </Field>
-        <Field Name="SalespointGroup">
-          <DataField>SalespointGroup</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-      <Filters>
-        <Filter>
-          <FilterExpression>=left(Fields!SalespointGroup.Value,2)</FilterExpression>
-          <Operator>In</Operator>
-          <FilterValues>
-            <FilterValue>=Parameters!resort.Value</FilterValue>
-          </FilterValues>
-        </Filter>
-      </Filters>
-    </DataSet>
     <DataSet Name="SalespointGroup">
       <Query>
         <DataSourceName>ReportDataSource</DataSourceName>
@@ -237,7 +205,7 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
         <CommandText>set transaction isolation level read uncommitted
 
 select pmtype_no
-	, descrip
+	, rtrim(descrip) as descrip
 from pmt_type
 where pmtype_no in(18,63,20,21,24,15,30)
 order by descrip</CommandText>
@@ -249,6 +217,31 @@ order by descrip</CommandText>
         </Field>
         <Field Name="descrip">
           <DataField>descrip</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="SalespointGroupsMembership">
+      <Query>
+        <DataSourceName>Domo_Lookup</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@User">
+            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Resort">
+            <Value>=Parameters!resort.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>GetMembershipByResort</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="IsMemberOfGroup">
+          <DataField>IsMemberOfGroup</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
+        </Field>
+        <Field Name="SalespointGroup">
+          <DataField>SalespointGroup</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1639,7 +1632,7 @@ order by descrip</CommandText>
             <DataSetName>DataSet1</DataSetName>
             <Top>1.27083in</Top>
             <Height>0.70833in</Height>
-            <Width>10.06564in</Width>
+            <Width>10.06563in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -1831,7 +1824,7 @@ order by descrip</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Credit Card Detail Report  ●  v0.1 </Value>
+                      <Value>Peak Resorts  ●  Credit Card Detail Report  ●  v0.2 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -1924,7 +1917,7 @@ order by descrip</CommandText>
       <Prompt>Salespoint Group</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>FBMembership</DataSetName>
+          <DataSetName>SalespointGroupsMembership</DataSetName>
           <ValueField>SalespointGroup</ValueField>
           <LabelField>SalespointGroup</LabelField>
         </DataSetReference>
@@ -1980,18 +1973,8 @@ order by descrip</CommandText>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>endDate</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>startDate</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>3</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>pmtType</ParameterName>
+          <ParameterName>pFBsp_group</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>2</ColumnIndex>
@@ -1999,9 +1982,19 @@ order by descrip</CommandText>
           <ParameterName>salespointgroup</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
+          <ColumnIndex>3</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>pFBsp_group</ParameterName>
+          <ParameterName>pmtType</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>startDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>endDate</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
