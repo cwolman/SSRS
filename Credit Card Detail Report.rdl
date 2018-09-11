@@ -33,7 +33,7 @@
           </QueryParameter>
         </QueryParameters>
         <CommandText>-- declare @startDate datetime='2018-09-01'
--- declare @endDate datetime='2018-09-01 23:59:59'
+-- declare @endDate datetime='2018-09-01'
 -- declare @salespointgroup int=126
 -- declare @pmtType int=15
 
@@ -43,6 +43,8 @@ with ctesh
 as
 (
 select sh.mastersale
+	, sh.sale_no
+	, sh.acct_name
 	, sh.date_time
 	, sh.operator
 	, sh.salespoint
@@ -73,10 +75,11 @@ where n.number between 1 and 4
 				when 4 then sh.pmt_amt4
 				else null 
 			end&lt;&gt;0
-		and sh.date_time between @startDate and @endDate + ' 23:59:59'
+		and sh.date_time between @startDate and dateadd(s,-1,@endDate+1)
 		and sg.group_no in(@salespointgroup)
 )
 
+---- saved sales payments ----
 select sh.sp_group
 	, shs.first_name as 'table'
 	, cc.sale_no
@@ -90,13 +93,36 @@ select sh.sp_group
 	, cc.card_id
 	, sh.date_time 
 from cc_trans cc
-join ctesh sh on sh.mastersale=cc.sale_no and sh.salespoint=cc.salespoint and sh.paid=cc.amount
+join ctesh sh on sh.mastersale=cc.sale_no and sh.salespoint=cc.salespoint and sh.operator=cc.operator and sh.paid=cc.amount
 join pmt_type pt on pt.pmtype_no=sh.pmttype_no
 join operator op on op.op_code=cc.operator
 left join sh_save shs on shs.mastersale=cc.sale_no
-where cc.approval&lt;&gt;''
+where cc.sale_no&lt;&gt;0
+	and cc.approval&lt;&gt;''
 	and sh.pmttype_no in(@pmtType)
-order by sale_no, date_time</CommandText>
+
+union all
+
+---- non saved sales payments ----
+select sh.sp_group
+	, sh.acct_name as 'table'
+	, cc.sale_no
+	, cc.operator
+	, concat(rtrim(dbo.proper(op.first_name)),space(1),rtrim(dbo.proper(op.last_name))) as op_name 
+	, cc.card_type 
+	, pt.descrip
+	, cc.salespoint
+	, cc.tip
+	, cc.amount
+	, cc.card_id
+	, sh.date_time 
+from cc_trans cc
+join ctesh sh on sh.sale_no=cc.sale_no
+join pmt_type pt on pt.pmtype_no=sh.pmttype_no
+join operator op on op.op_code=cc.operator
+where sh.mastersale=0
+	and cc.approval&lt;&gt;''
+	and sh.pmttype_no in(@pmtType)</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -980,10 +1006,16 @@ order by descrip</CommandText>
                 <TablixMember>
                   <Group Name="table">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!table.Value</GroupExpression>
+                      <GroupExpression>=Fields!sale_no.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
+                    <SortExpression>
+                      <Value>=Fields!date_time.Value</Value>
+                    </SortExpression>
+                    <SortExpression>
+                      <Value>=Fields!sale_no.Value</Value>
+                    </SortExpression>
                     <SortExpression>
                       <Value>=Fields!table.Value</Value>
                     </SortExpression>
@@ -1824,7 +1856,7 @@ order by descrip</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Credit Card Detail Report  ●  v0.2 </Value>
+                      <Value>Peak Resorts  ●  Credit Card Detail Report  ●  v0.3</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
