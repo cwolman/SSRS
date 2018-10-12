@@ -22,7 +22,7 @@
             <Value>=Parameters!salespointgroup.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>--declare @salespointgroup int=23
+        <CommandText>-- declare @salespointgroup int=23
 -- ====================================
 -- sales by salespoint group report
 -- reports faux finalized sales only
@@ -252,11 +252,19 @@ select sg.descrip
 	, 0  as item_revenue
 	, 0  as spec_amt
 	, '' as specString
-	, concat(substring(replace(tag_line,'''',''),charindex(' of', tag_line)+4,33),
-			  space(4),
-			  substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1)
-			 ) as voidString
-	, cast(substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1) as integer) as voidTotal
+	, case 
+		when tag_line like 'Void Item:%' then 
+			concat(substring(replace(tag_line,'''',''),charindex(' of', tag_line)+4,33),
+					space(4),
+					substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1)
+			)
+		else concat(substring(tag_line,charindex(' Item', tag_line)+7,33), space(4),substring(tag_line,charindex('e:', tag_line)+3,(charindex('Item:',tag_line)-5)-charindex('e:',tag_line)))
+	  end as voidString
+	, case 
+		when tag_line like 'Void Item:%' then
+			cast(substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1) as integer)
+		else cast(substring(tag_line,charindex('e:', tag_line)+3,(charindex('Item:',tag_line)-5)-charindex('e:',tag_line)) as integer)
+	  end as voidTotal
 	, '' as sales_category
 from sp_log sp
 join operator op on op.op_code = sp.operator
@@ -264,7 +272,7 @@ join sp_link sl on sl.salespoint = sp.salespoint
 join sp_group sg on sg.group_no = sl.group_no
 where sg.group_no = @salespointgroup
 	   and activ_type=1060 
-	   and tag_line like 'Void item:%'
+	   and (tag_line like 'Void item:%' or tag_line like 'Qty Change:%')
 	   and sp.date_time between (select min(date_time) from cteSales) and (select max(date_time) from cteSales)
 
 union all
@@ -2317,7 +2325,7 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.5</Value>
+                                  <Value>v 1.0</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
