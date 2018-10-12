@@ -17,11 +17,12 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <CommandText>declare @salespointgroup int=23
-declare @startdate date='2018-08-17'
-declare @enddate datetime='2018-08-17 23:59:59'
-
--- ====================================
+        <QueryParameters>
+          <QueryParameter Name="@salespointgroup">
+            <Value>=Parameters!salespointgroup.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>-- ====================================
 -- sales by salespoint group report
 -- reports faux finalized sales only
 -- ====================================
@@ -35,9 +36,10 @@ with
 cteSales
 as
 (
-	select sg.descrip as sp_group
+	select top(100) percent sg.descrip as sp_group
 		, sh.salespoint
 		, sh.operator
+		, sh.date_time
 		, rtrim(op.first_name) as firstName
 		, rtrim(op.last_name) as lastName
 		, sh.sale_no
@@ -55,10 +57,10 @@ as
 	join sp_link sl on sl.salespoint=sh.salespoint 
 	join sp_group sg on sg.group_no=sl.group_no
 	join operator op on op.op_code=sh.operator 
-	where /*sh.finalized=0
+	where sh.finalized=0
 		and sh.final_pend=1
-		and*/ sg.group_no=@salespointgroup
-		and sh.date_time between @startdate and @enddate
+		and sg.group_no=@salespointgroup
+	order by department, category, item
 )
 
 ---- sales by salespoint ----
@@ -107,7 +109,7 @@ select sp_group
 	, 0  as tax_amount
 	, 0  as tips_total
 	, '' as spString 
-	, '' as operator
+	, operator
 	, opString 
 	, op_sales_total
 	, '' as depString
@@ -122,6 +124,7 @@ select sp_group
 	, 0  as voidTotal
 from (
 		select sp_group
+			, operator 
 			, sum(net_revenue) as op_sales_total
 			, concat(cast(firstName + ' ' + lastName as char(26)),
 					space(4),
@@ -192,7 +195,7 @@ select sp_group
 	, 0  as voidTotal
 from cteSales
 where department not like '**%'
-group by sp_group, category
+group by sp_group, department, category
 
 union all
 ---- sales by item ----
@@ -285,8 +288,9 @@ join operator op on op.op_code = sp.operator
 join sp_link sl on sl.salespoint = sp.salespoint
 join sp_group sg on sg.group_no = sl.group_no
 where sg.group_no = @salespointgroup
-	   and activ_type=1060 and tag_line like 'Void item:%'
-	   and sp.date_time between @startdate and @enddate</CommandText>
+	   and activ_type=1060 
+	   and tag_line like 'Void item:%'
+	   and sp.date_time between (select min(date_time) from cteSales) and (select max(date_time) from cteSales)</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -306,36 +310,32 @@ where sg.group_no = @salespointgroup
           <DataField>tax_amount</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="operator">
-          <DataField>operator</DataField>
+        <Field Name="tips_total">
+          <DataField>tips_total</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="spString">
+          <DataField>spString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="depString">
-          <DataField>depString</DataField>
+        <Field Name="operator">
+          <DataField>operator</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="opString">
           <DataField>opString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="dep_net_revenue">
-          <DataField>dep_net_revenue</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
         <Field Name="op_sales_total">
           <DataField>op_sales_total</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="itemString">
-          <DataField>itemString</DataField>
+        <Field Name="depString">
+          <DataField>depString</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="item_revenue">
-          <DataField>item_revenue</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="tips_total">
-          <DataField>tips_total</DataField>
+        <Field Name="dep_net_revenue">
+          <DataField>dep_net_revenue</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="catString">
@@ -346,13 +346,17 @@ where sg.group_no = @salespointgroup
           <DataField>cat_net_revenue</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="itemString">
+          <DataField>itemString</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="item_revenue">
+          <DataField>item_revenue</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="spec_amt">
           <DataField>spec_amt</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="spString">
-          <DataField>spString</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="specString">
           <DataField>specString</DataField>
@@ -377,17 +381,16 @@ where sg.group_no = @salespointgroup
           </QueryParameter>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
-select rtrim(descrip) as spGroup
-	, group_no
-  from sp_group
-where rtrim(descrip) in(@pFBsp_group)
-order by descrip</CommandText>
+
+select distinct sg.group_no
+from sp_group sg
+join sp_link sl on sl.group_no=sg.group_no
+join sh_save sh on sh.salespoint=sl.salespoint
+	-- and sh.final_pend=1
+	-- and sh.finalized=0 
+where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
       </Query>
       <Fields>
-        <Field Name="spGroup">
-          <DataField>spGroup</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="group_no">
           <DataField>group_no</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -427,6 +430,10 @@ order by descrip</CommandText>
         <QueryParameters>
           <QueryParameter Name="@User">
             <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Resort">
+            <Value>=Parameters!pResort.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
@@ -928,6 +935,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -1134,6 +1142,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -1336,6 +1345,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -1543,6 +1553,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -1750,6 +1761,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -1946,12 +1958,18 @@ order by descrip</CommandText>
                             <TablixMembers>
                               <TablixMember>
                                 <Group Name="Details4" />
+                                <SortExpressions>
+                                  <SortExpression>
+                                    <Value>=Fields!opString.Value</Value>
+                                  </SortExpression>
+                                </SortExpressions>
                                 <Visibility>
                                   <Hidden>=iif(Fields!opString.Value = "", TRUE, FALSE)</Hidden>
                                 </Visibility>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -2136,7 +2154,6 @@ order by descrip</CommandText>
                                           <PaddingBottom>2pt</PaddingBottom>
                                         </Style>
                                       </Textbox>
-                                      <rd:Selected>true</rd:Selected>
                                     </CellContents>
                                   </TablixCell>
                                 </TablixCells>
@@ -2163,6 +2180,7 @@ order by descrip</CommandText>
                               </TablixMember>
                             </TablixMembers>
                           </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
                           <DataSetName>GatherData</DataSetName>
                           <Style>
                             <Border>
@@ -2275,7 +2293,7 @@ order by descrip</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.2</Value>
+                                  <Value>v0.4</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -2365,6 +2383,8 @@ order by descrip</CommandText>
       <Width>2.9in</Width>
       <Page>
         <PageWidth>2.9in</PageWidth>
+        <InteractiveHeight>0in</InteractiveHeight>
+        <InteractiveWidth>2.9in</InteractiveWidth>
         <Style />
       </Page>
     </ReportSection>
@@ -2383,12 +2403,6 @@ order by descrip</CommandText>
     </ReportParameter>
     <ReportParameter Name="pFBsp_group">
       <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>FBMembership</DataSetName>
-          <ValueField>SalespointGroup</ValueField>
-        </DataSetReference>
-      </DefaultValue>
       <Prompt>Salespoint Group</Prompt>
       <ValidValues>
         <DataSetReference>
@@ -2398,8 +2412,8 @@ order by descrip</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="piSalespointGroup">
-      <DataType>Integer</DataType>
+    <ReportParameter Name="salespointgroup">
+      <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
           <DataSetName>SalespointGroup</DataSetName>
@@ -2407,6 +2421,7 @@ order by descrip</CommandText>
         </DataSetReference>
       </DefaultValue>
       <Hidden>true</Hidden>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
@@ -2416,13 +2431,13 @@ order by descrip</CommandText>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>piSalespointGroup</ParameterName>
+          <RowIndex>0</RowIndex>
+          <ParameterName>pResort</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>pResort</ParameterName>
+          <RowIndex>2</RowIndex>
+          <ParameterName>salespointgroup</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
