@@ -61,7 +61,7 @@ select operator
 	, lastName
 	, min(checkCount) as checkCount
 	, sum(net_revenue) as net_revenue
-	, min(tips_Total) as tips_total
+	, sum(tips_Total) as tips_total
 from (
 		select operator
 			, salespoint
@@ -167,6 +167,10 @@ order by descrip</CommandText>
           <QueryParameter Name="@User">
             <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
           </QueryParameter>
+          <QueryParameter Name="@Resort">
+            <Value>=Parameters!pResort.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>GetFBMembership</CommandText>
@@ -201,14 +205,14 @@ order by descrip</CommandText>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
-select sh.salespoint
+select distinct sh.salespoint
 from sh_save sh
 join sp_link spl on spl.salespoint=sh.salespoint
 join sp_group sg on spl.group_no=sg.group_no
 where final_pend=1
 	and finalized=0
 	and sg.descrip in(@pFBsp_group)
-order by sg.descrip</CommandText>
+order by sh.salespoint</CommandText>
       </Query>
       <Fields>
         <Field Name="salespoint">
@@ -772,7 +776,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.5</Value>
+                                  <Value>v0.6</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
