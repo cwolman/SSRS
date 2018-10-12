@@ -52,7 +52,7 @@ as
 			select sh.operator
 				, shs.sale_no
 				, datediff(minute,shs.orig_dt,shs.date_time) as minutes_check_open
-				, shs.descrip2 as covers
+				, case when shs.descrip2=0 then 1 else shs.descrip2 end as covers
 				, rtrim(op.first_name) as firstName
 				, rtrim(op.last_name) as lastName
 				, case n.number
@@ -1910,7 +1910,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.7</Value>
+                                  <Value>v 1.0</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
