@@ -776,7 +776,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.6</Value>
+                                  <Value>v 1.0</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
