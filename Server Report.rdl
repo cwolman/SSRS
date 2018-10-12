@@ -22,7 +22,7 @@
             <Value>=Parameters!operator.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText> --declare @operator char(6)='HMDCR'
+        <CommandText> --declare @operator char(6)='PKMJC'
  --declare @startdate date='2018-08-17'
  --declare @enddate datetime='2018-08-17 23:59:59'
 
@@ -41,7 +41,6 @@ with ctePayments
 as
 (
 	select operator
-		--, salespoint
 		, firstName
 		, lastName
 		, sale_no
@@ -51,7 +50,6 @@ as
 		, sum(paid) as paid
 	from (
 			select sh.operator
-				--, sh.salespoint
 				, shs.sale_no
 				, datediff(minute,shs.orig_dt,shs.date_time) as minutes_check_open
 				, shs.descrip2 as covers
@@ -87,8 +85,7 @@ as
 				and shs.finalized=0
 				and sh.closeout=0
 				and sh.operator=@operator
-				-- and sh.salespoint=@salespoint
-				--and sh.date_time between @startdate and @enddate
+			 -- and sh.date_time between @startdate and @enddate
 		) p
 	join pmt_type pm on pm.pmtype_no = p.pmttype_no
 	group by operator, firstName, lastName, sale_no, minutes_check_open, covers, pm.descrip
@@ -101,25 +98,24 @@ cteSales
 as
 (
 	select sh.operator
-		--, sh.salespoint
 		, sh.sale_no
 		, ts.department
+		, d.udf_text1 as sales_category
 		, ts.extension-(ts.tax_amount+ts.tax_amt2) as net_revenue
 		, ts.special
 		, ts.disc_amt
 	from sh_save sh
 	join tr_save ts on ts.sale_no=sh.sale_no
+	join departme d on ts.department=d.department
 	where sh.finalized=0
 		and sh.final_pend=1
 		and sh.operator=@operator
-		-- and sh.salespoint=@salespoint
-		-- and sh.date_time between @startdate and @enddate
+	--  and sh.date_time between @startdate and @enddate
 )
 -- =========
 -- payments
 -- =========
 select operator
-	--, salespoint
 	, firstName
 	, lastName
 	, paid as payment_total
@@ -130,6 +126,8 @@ select operator
 	, (select avg(minutes_check_open) from (select distinct sale_no, minutes_check_open from ctePayments)c) as avg_check_time
 	, '' as depString
 	, 0  as net_revenue
+	, 0  as tipout_bar
+	, 0  as tipout_bus 
 	, 0  as tips_total
 	, 0  as spec_amt
 	, '' as specString
@@ -140,7 +138,6 @@ union all
 select *
 from (
 		select operator
-			--, '' as salespoint
 			, '' as firstName
 			, '' as lastName
 			, 0  as payment_total
@@ -149,20 +146,22 @@ from (
 			, 0  as checkCount
 			, 0  as coverCount
 			, 0  as avg_check_time 
-			, concat(cast(department as char(28)),space(1),replicate(' ',7-len(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end)) + cast(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as varchar)) as depString
-			, case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as net_revenue
-			, case when department='**TIPS**' then sum(net_revenue) else 0 end as tips_total
+			, concat(cast(sales_category as char(28)),space(1),replicate(' ',7-len(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end)) + cast(case when department&lt;&gt;'**TIPS**' then sum(net_revenue) else 0 end as varchar)) as depString
+			, sum(net_revenue) as net_revenue
+			, case when sales_category='BAR' then sum(net_revenue)*.03 else 0 end as tipout_bar
+			, case when sales_category='FOOD' then sum(net_revenue)*.03 else 0 end as tipout_bus
+			, 0 as tips_total
 			, 0  as spec_amt
 			, '' as specString
 		from cteSales
-		group by operator, department
+		where department&lt;&gt;'**TIPS**'
+		group by operator, department, sales_category
 	) s
 where depString not like '**%'
 
 union all
 -- specials
 select operator
-	--, '' as salespoint
 	, '' as firstName
 	, '' as lastName
 	, 0  as payment_total
@@ -173,12 +172,36 @@ select operator
 	, 0  as avg_check_time
 	, '' as depString
 	, 0  as net_revenue
+	, 0  as tipout_bar
+	, 0  as tipout_bus
 	, 0  as tips_total
 	, disc_amt as spec_amt
 	, concat(cast(isnull(s.descrip,'') as char(16)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
 from cteSales cs
 join specials s on s.name=cs.special
-where disc_amt&lt;&gt;0</CommandText>
+where disc_amt&lt;&gt;0
+
+union all
+-- tips
+select operator
+	, '' as firstName
+	, '' as lastName
+	, 0  as payment_total
+	, '' as pmtString
+	, 0  as cash_payments
+	, 0  as checkCount
+	, 0  as coverCount 
+	, 0  as avg_check_time
+	, '' as depString
+	, 0  as net_revenue
+	, 0  as tipout_bar
+	, 0  as tipout_bus
+	, sum(net_revenue) as tips_total
+	, 0  as spec_amt
+	, '' as specString
+from cteSales
+where department='**TIPS**'
+group by operator, department </CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -226,8 +249,16 @@ where disc_amt&lt;&gt;0</CommandText>
           <DataField>net_revenue</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="tipout_bar">
+          <DataField>tipout_bar</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="tips_total">
           <DataField>tips_total</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="tipout_bus">
+          <DataField>tipout_bus</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="spec_amt">
@@ -358,11 +389,24 @@ order by sh.salespoint</CommandText>
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@salespoint">
-            <Value>=Parameters!salespoint.Value</Value>
+          <QueryParameter Name="@pFBsp_group">
+            <Value>=Parameters!pFBsp_group.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
+
+;
+with cteSalespoints
+as
+(
+	select distinct sh.salespoint
+	from sh_save sh
+	join sp_link spl on spl.salespoint=sh.salespoint
+	join sp_group sg on spl.group_no=sg.group_no
+	where final_pend=1
+		and finalized=0
+		and sg.descrip in(@pFBsp_group)
+)
 
 select distinct sh.operator
 	, concat(rtrim(op.last_name),', ',rtrim(op.first_name)) as op_name
@@ -370,7 +414,7 @@ from sh_save sh
 join operator op on sh.operator=op.op_code
 where sh.final_pend=1
 	and sh.finalized=0
-	and sh.salespoint in(@salespoint)
+	and sh.salespoint in(select salespoint from ctesalespoints)
 order by sh.operator</CommandText>
       </Query>
       <Fields>
@@ -763,7 +807,7 @@ order by sh.operator</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Tips</Label>
-                                  <Value>="Tips: " &amp; round(first(Fields!tips_total.Value),2)</Value>
+                                  <Value>="Tips: " &amp; round(sum(Fields!tips_total.Value),2)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1700,6 +1744,129 @@ order by sh.operator</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Suggested tip out:</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Left</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="tipout_bus">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>="Bus " &amp; round(Sum(Fields!tipout_bus.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Left</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>tipout_bus</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="tipout_bar">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>="Bar " &amp; round(Sum(Fields!tipout_bar.Value),2)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Left</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>tipout_bar</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
                   <Height>0.6in</Height>
                   <TablixCells>
                     <TablixCell>
@@ -1743,7 +1910,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.6</Value>
+                                  <Value>v 0.7</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -1892,6 +2059,15 @@ order by sh.operator</CommandText>
                     <TablixMember>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
                   </TablixMembers>
                   <Visibility>
                     <Hidden>=iif(Fields!operator.Value = "", TRUE, FALSE)</Hidden>
@@ -1901,7 +2077,7 @@ order by sh.operator</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>7.7in</Height>
+            <Height>8.45in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -1910,7 +2086,7 @@ order by sh.operator</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>8.35in</Height>
+        <Height>8.45in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
@@ -1945,16 +2121,6 @@ order by sh.operator</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="salespoint">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>GetSalespoints</DataSetName>
-          <ValueField>salespoint</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Hidden>true</Hidden>
-    </ReportParameter>
     <ReportParameter Name="operator">
       <DataType>String</DataType>
       <Prompt>Operator</Prompt>
@@ -1970,7 +2136,7 @@ order by sh.operator</CommandText>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>3</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>1</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -1985,11 +2151,6 @@ order by sh.operator</CommandText>
         <CellDefinition>
           <ColumnIndex>2</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>salespoint</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
           <ParameterName>operator</ParameterName>
         </CellDefinition>
       </CellDefinitions>
