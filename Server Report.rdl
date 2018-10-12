@@ -17,10 +17,14 @@
     <DataSet Name="GatherData">
       <Query>
         <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
-        <CommandText>declare @operator char(6)='HMDCR'
-declare @salespoint char(6)='HMFB71'
-declare @startdate date='2018-08-17'
-declare @enddate datetime='2018-08-17 23:59:59'
+        <QueryParameters>
+          <QueryParameter Name="@operator">
+            <Value>=Parameters!operator.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText> --declare @operator char(6)='HMDCR'
+ --declare @startdate date='2018-08-17'
+ --declare @enddate datetime='2018-08-17 23:59:59'
 
 -- ====================================
 -- server report
@@ -37,17 +41,17 @@ with ctePayments
 as
 (
 	select operator
-		, salespoint
+		--, salespoint
 		, firstName
 		, lastName
 		, sale_no
 		, minutes_check_open
 		, covers
 		, pm.descrip as payment_type
-		, paid
+		, sum(paid) as paid
 	from (
 			select sh.operator
-				, sh.salespoint
+				--, sh.salespoint
 				, shs.sale_no
 				, datediff(minute,shs.orig_dt,shs.date_time) as minutes_check_open
 				, shs.descrip2 as covers
@@ -79,14 +83,15 @@ as
 						when 4 then sh.pmt_amt4
 						else null 
 					end&lt;&gt;0
-				--and shs.final_pend=1
-				--and shs.finalized=0
-				--and sh.closeout=0
+				and shs.final_pend=1
+				and shs.finalized=0
+				and sh.closeout=0
 				and sh.operator=@operator
-				and sh.salespoint=@salespoint
-				and sh.date_time between @startdate and @enddate
+				-- and sh.salespoint=@salespoint
+				--and sh.date_time between @startdate and @enddate
 		) p
 	join pmt_type pm on pm.pmtype_no = p.pmttype_no
+	group by operator, firstName, lastName, sale_no, minutes_check_open, covers, pm.descrip
 )
 , 
 -- ====================================
@@ -96,7 +101,7 @@ cteSales
 as
 (
 	select sh.operator
-		, sh.salespoint
+		--, sh.salespoint
 		, sh.sale_no
 		, ts.department
 		, ts.extension-(ts.tax_amount+ts.tax_amt2) as net_revenue
@@ -104,21 +109,21 @@ as
 		, ts.disc_amt
 	from sh_save sh
 	join tr_save ts on ts.sale_no=sh.sale_no
-	where --sh.finalized=0
-		--and sh.final_pend=1
-		sh.operator=@operator
-		and sh.salespoint=@salespoint
-		and sh.date_time between @startdate and @enddate
+	where sh.finalized=0
+		and sh.final_pend=1
+		and sh.operator=@operator
+		-- and sh.salespoint=@salespoint
+		-- and sh.date_time between @startdate and @enddate
 )
 -- =========
 -- payments
 -- =========
 select operator
-	, salespoint
+	--, salespoint
 	, firstName
 	, lastName
 	, paid as payment_total
-	, concat(sale_no,space(1),cast(payment_type as char(16)),space(1),replicate(' ',7-len(paid)) + cast(paid as varchar)) as pmtString
+	, concat(sale_no,space(1),cast(payment_type as char(16)),space(1),replicate(' ',8-len(paid)) + cast(paid as varchar)) as pmtString
 	, (select sum(paid) from ctePayments where payment_type='CASH') as cash_payments
 	, (select count(distinct sale_no) from ctePayments) as checkCount
 	, (select sum(covers) from (select distinct sale_no, covers from ctePayments)c) as coverCount
@@ -135,7 +140,7 @@ union all
 select *
 from (
 		select operator
-			, '' as salespoint
+			--, '' as salespoint
 			, '' as firstName
 			, '' as lastName
 			, 0  as payment_total
@@ -157,7 +162,7 @@ where depString not like '**%'
 union all
 -- specials
 select operator
-	, '' as salespoint
+	--, '' as salespoint
 	, '' as firstName
 	, '' as lastName
 	, 0  as payment_total
@@ -172,16 +177,13 @@ select operator
 	, disc_amt as spec_amt
 	, concat(cast(isnull(s.descrip,'') as char(16)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
 from cteSales cs
-join specials s on s.name=cs.special</CommandText>
+join specials s on s.name=cs.special
+where disc_amt&lt;&gt;0</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="operator">
           <DataField>operator</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="salespoint">
-          <DataField>salespoint</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="firstName">
@@ -298,6 +300,10 @@ order by descrip</CommandText>
           <QueryParameter Name="@User">
             <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
           </QueryParameter>
+          <QueryParameter Name="@Resort">
+            <Value>=Parameters!pResort.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>GetFBMembership</CommandText>
@@ -332,14 +338,14 @@ order by descrip</CommandText>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
-select sh.salespoint
+select distinct sh.salespoint
 from sh_save sh
 join sp_link spl on spl.salespoint=sh.salespoint
 join sp_group sg on spl.group_no=sg.group_no
 where final_pend=1
 	and finalized=0
 	and sg.descrip in(@pFBsp_group)
-order by sg.descrip</CommandText>
+order by sh.salespoint</CommandText>
       </Query>
       <Fields>
         <Field Name="salespoint">
@@ -444,46 +450,6 @@ order by sh.operator</CommandText>
                                 <TextRun>
                                   <Label>Operator</Label>
                                   <Value>=Fields!operator.Value</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style>
-                                <TextAlign>Center</TextAlign>
-                              </Style>
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>spGroup</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>None</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.2in</Height>
-                  <TablixCells>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="spGroup3">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Label>Salespoint</Label>
-                                  <Value>=Fields!salespoint.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Typewriter</FontFamily>
                                   </Style>
@@ -1777,7 +1743,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 0.5</Value>
+                                  <Value>v 0.6</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -1823,9 +1789,6 @@ order by sh.operator</CommandText>
                     </GroupExpressions>
                   </Group>
                   <TablixMembers>
-                    <TablixMember>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
                     <TablixMember>
                       <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
@@ -1938,7 +1901,7 @@ order by sh.operator</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>7.9in</Height>
+            <Height>7.7in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -1984,14 +1947,13 @@ order by sh.operator</CommandText>
     </ReportParameter>
     <ReportParameter Name="salespoint">
       <DataType>String</DataType>
-      <Prompt>Salespoint</Prompt>
-      <ValidValues>
+      <DefaultValue>
         <DataSetReference>
           <DataSetName>GetSalespoints</DataSetName>
           <ValueField>salespoint</ValueField>
-          <LabelField>salespoint</LabelField>
         </DataSetReference>
-      </ValidValues>
+      </DefaultValue>
+      <Hidden>true</Hidden>
     </ReportParameter>
     <ReportParameter Name="operator">
       <DataType>String</DataType>
@@ -2007,7 +1969,7 @@ order by sh.operator</CommandText>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfColumns>3</NumberOfColumns>
       <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
@@ -2021,14 +1983,14 @@ order by sh.operator</CommandText>
           <ParameterName>pFBsp_group</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>operator</ParameterName>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>salespoint</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>salespoint</ParameterName>
+          <ParameterName>operator</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
