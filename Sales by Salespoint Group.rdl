@@ -22,7 +22,8 @@
             <Value>=Parameters!salespointgroup.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>-- ====================================
+        <CommandText>--declare @salespointgroup int=23
+-- ====================================
 -- sales by salespoint group report
 -- reports faux finalized sales only
 -- ====================================
@@ -36,7 +37,7 @@ with
 cteSales
 as
 (
-	select top(100) percent sg.descrip as sp_group
+	select sg.descrip as sp_group
 		, sh.salespoint
 		, sh.operator
 		, sh.date_time
@@ -60,7 +61,6 @@ as
 	where sh.finalized=0
 		and sh.final_pend=1
 		and sg.group_no=@salespointgroup
-	order by department, category, item
 )
 
 ---- sales by salespoint ----
@@ -83,6 +83,7 @@ select sp_group
 	, '' as specString
 	, '' as voidString
 	, 0  as voidTotal
+	, '' as sales_category
 from (
 		select sp_group
 			, salespoint
@@ -122,6 +123,7 @@ select sp_group
 	, '' as specString
 	, '' as voidString
 	, 0  as voidTotal
+	, '' as sales_category
 from (
 		select sp_group
 			, operator 
@@ -161,6 +163,7 @@ select sp_group
 	, '' as specString
 	, '' as voidString
 	, 0  as voidTotal
+	, '' as sales_category
 from cteSales
 where department not like '**%'
 group by sp_group, department
@@ -193,9 +196,76 @@ select sp_group
 	, '' as specString
 	, '' as voidString
 	, 0  as voidTotal
-from cteSales
-where department not like '**%'
-group by sp_group, department, category
+	, d.udf_text1 as sales_category
+from cteSales c
+join departme d on c.department=d.department 
+where c.department not like '**%'
+group by sp_group, c.department, category, d.udf_text1
+
+union all
+---- specials ----
+select sp_group
+	, '' as salespoint
+	, 0  as sp_sales_total
+	, 0  as tax_amount
+	, 0  as tips_total
+	, '' as spString
+	, '' as operator
+	, '' as opString
+	, 0  as op_sales_total
+	, '' as depString
+	, 0  as dep_net_revenue
+	, '' as catString
+	, 0  as cat_net_revenue
+	, '' as itemString
+	, 0  as item_revenue
+	, sum(disc_amt) as spec_amt
+	, concat(cast(isnull(s.descrip,'') as char(26)),
+			space(1),
+			replicate(' ',3-len(sum(quantity))) + cast(sum(quantity) as varchar),
+			space(1),
+			replicate(' ',7-len(sum(disc_amt))) + cast(sum(disc_amt) as varchar)
+			) as specString
+	, '' as voidString
+	, 0  as voidTotal
+	, '' as sales_category
+from cteSales cs
+join specials s on s.name=cs.special
+group by sp_group, s.descrip
+
+union all
+---- voids ----
+select sg.descrip 
+    , '' as salespoint
+	, 0  as sp_sales_total
+	, 0  as tax_amount
+	, 0  as tips_total
+	, '' as spString
+	, '' as operator
+	, '' as opString
+	, 0  as op_sales_total
+	, '' as depString
+	, 0  as dep_net_revenue
+	, '' as catString
+	, 0  as cat_net_revenue
+	, '' as itemString
+	, 0  as item_revenue
+	, 0  as spec_amt
+	, '' as specString
+	, concat(substring(replace(tag_line,'''',''),charindex(' of', tag_line)+4,33),
+			  space(4),
+			  substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1)
+			 ) as voidString
+	, cast(substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1) as integer) as voidTotal
+	, '' as sales_category
+from sp_log sp
+join operator op on op.op_code = sp.operator
+join sp_link sl on sl.salespoint = sp.salespoint
+join sp_group sg on sg.group_no = sl.group_no
+where sg.group_no = @salespointgroup
+	   and activ_type=1060 
+	   and tag_line like 'Void item:%'
+	   and sp.date_time between (select min(date_time) from cteSales) and (select max(date_time) from cteSales)
 
 union all
 ---- sales by item ----
@@ -225,72 +295,11 @@ select sp_group
 	, '' as specString
 	, '' as voidString
 	, 0  as voidTotal
-from cteSales
-where department not like '**%'
-group by sp_group, item
-
-union all
----- specials ----
-select sp_group
-	, '' as salespoint
-	, 0  as sp_sales_total
-	, 0  as tax_amount
-	, 0  as tips_total
-	, '' as spString
-	, '' as operator
-	, '' as opString
-	, 0  as op_sales_total
-	, '' as depString
-	, 0  as dep_net_revenue
-	, '' as catString
-	, 0  as cat_net_revenue
-	, '' as itemString
-	, 0  as item_revenue
-	, sum(disc_amt) as spec_amt
-	, concat(cast(isnull(s.descrip,'') as char(26)),
-			space(1),
-			replicate(' ',3-len(sum(quantity))) + cast(sum(quantity) as varchar),
-			space(1),
-			replicate(' ',7-len(sum(disc_amt))) + cast(sum(disc_amt) as varchar)
-			) as specString
-	, '' as voidString
-	, 0  as voidTotal
-from cteSales cs
-join specials s on s.name=cs.special
-group by sp_group, s.descrip
-
-union all
----- voids ----
-select sg.descrip 
-    , '' as salespoint
-	, 0  as sp_sales_total
-	, 0  as tax_amount
-	, 0  as tips_total
-	, '' as spString
-	, '' as operator
-	, '' as opString
-	, 0  as op_sales_total
-	, '' as depString
-	, 0  as dep_net_revenue
-	, '' as catString
-	, 0  as cat_net_revenue
-	, '' as itemString
-	, 0  as item_revenue
-	, 0  as spec_amt
-	, '' as specString
-	, concat(substring(replace(tag_line,'''',''),charindex(' of', tag_line)+4,33),
-			  space(4),
-			  substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1)
-			 ) as voidString
-	, cast(substring(tag_line,charindex(': ',tag_line)+2,(charindex(' of', tag_line)-CHARINDEX(': ',tag_line))-1) as integer) as voidTotal
-from sp_log sp
-join operator op on op.op_code = sp.operator
-join sp_link sl on sl.salespoint = sp.salespoint
-join sp_group sg on sg.group_no = sl.group_no
-where sg.group_no = @salespointgroup
-	   and activ_type=1060 
-	   and tag_line like 'Void item:%'
-	   and sp.date_time between (select min(date_time) from cteSales) and (select max(date_time) from cteSales)</CommandText>
+	, d.udf_text1 as sales_category
+from cteSales c
+join departme d on c.department=d.department
+where c.department not like '**%'
+group by sp_group, d.udf_text1, item</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -369,6 +378,10 @@ where sg.group_no = @salespointgroup
         <Field Name="voidTotal">
           <DataField>voidTotal</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="sales_category">
+          <DataField>sales_category</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -1339,6 +1352,14 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
                             <TablixMembers>
                               <TablixMember>
                                 <Group Name="Details" />
+                                <SortExpressions>
+                                  <SortExpression>
+                                    <Value>=Fields!sales_category.Value</Value>
+                                  </SortExpression>
+                                  <SortExpression>
+                                    <Value>=Fields!catString.Value</Value>
+                                  </SortExpression>
+                                </SortExpressions>
                                 <Visibility>
                                   <Hidden>=iif(Fields!catString.Value = "", TRUE, FALSE)</Hidden>
                                 </Visibility>
@@ -1543,6 +1564,9 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
                               <TablixMember>
                                 <Group Name="Details6" />
                                 <SortExpressions>
+                                  <SortExpression>
+                                    <Value>=Fields!sales_category.Value</Value>
+                                  </SortExpression>
                                   <SortExpression>
                                     <Value>=Fields!itemString.Value</Value>
                                   </SortExpression>
@@ -2293,7 +2317,7 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v0.4</Value>
+                                  <Value>v0.5</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
