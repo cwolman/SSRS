@@ -22,7 +22,7 @@
             <Value>=Parameters!salespointgroup.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>-- declare @salespointgroup int=23
+        <CommandText>-- declare @salespointgroup int=88
 -- ====================================
 -- sales by salespoint group report
 -- reports faux finalized sales only
@@ -94,7 +94,7 @@ from (
 					space(6),
 					replicate(' ',4-len(count(distinct sale_no))) + cast(count(distinct sale_no) as varchar), 
 					space(2),
-					replicate(' ',6-len((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100)) + cast((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100 as varchar),
+					replicate(' ',6-len((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100)) + cast((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100 as varchar),
 					space(7),
 					replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 					) as spString
@@ -150,7 +150,7 @@ select sp_group
 			space(2),
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
-			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
+			replicate(' ',6-len(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2))) + cast(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2) as varchar),
 			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as depString
@@ -185,7 +185,7 @@ select sp_group
 			space(2),
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
-			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
+			replicate(' ',6-len(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2))) + cast(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2) as varchar),
 			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as catString
@@ -294,7 +294,7 @@ select sp_group
 			space(2),
 			replicate(' ',4-len(sum(quantity))) + cast(sum(quantity) as varchar),
 			space(3),
-			replicate(' ',6-len(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2))) + cast(round((sum(net_revenue)/(select sum(net_revenue) from cteSales))*100,2) as varchar),
+			replicate(' ',6-len(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2))) + cast(round((sum(net_revenue)/nullif((select sum(net_revenue) from cteSales),0))*100,2) as varchar),
 			space(6),
 			replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)
 			) as itemString
@@ -422,25 +422,21 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
       <Query>
         <DataSourceName>Domo_Lookup</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@User">
+          <QueryParameter Name="@LdapUsername">
             <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>GetResortMembership</CommandText>
+        <CommandText>GetADResortMembership</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="IsMemberOfGroup">
-          <DataField>IsMemberOfGroup</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
-        </Field>
         <Field Name="Resort">
           <DataField>Resort</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="resortname">
-          <DataField>resortname</DataField>
+        <Field Name="ID">
+          <DataField>ID</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -449,37 +445,24 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
       <Query>
         <DataSourceName>Domo_Lookup</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@User">
-            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
-          </QueryParameter>
           <QueryParameter Name="@Resort">
             <Value>=Parameters!pResort.Value</Value>
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
+          <QueryParameter Name="@LdapUsername">
+            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>GetFBMembership</CommandText>
+        <CommandText>GetADFBMembership</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="IsMemberOfGroup">
-          <DataField>IsMemberOfGroup</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
-        </Field>
-        <Field Name="SalespointGroup">
-          <DataField>SalespointGroup</DataField>
+        <Field Name="ldapgroup">
+          <DataField>ldapgroup</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
-      <Filters>
-        <Filter>
-          <FilterExpression>=left(Fields!SalespointGroup.Value,2)</FilterExpression>
-          <Operator>In</Operator>
-          <FilterValues>
-            <FilterValue>=Parameters!pResort.Value</FilterValue>
-          </FilterValues>
-        </Filter>
-      </Filters>
     </DataSet>
   </DataSets>
   <ReportSections>
@@ -2325,7 +2308,7 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 1.0</Value>
+                                  <Value>v 1.1</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -2428,8 +2411,8 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
       <ValidValues>
         <DataSetReference>
           <DataSetName>ResortMembership</DataSetName>
-          <ValueField>Resort</ValueField>
-          <LabelField>resortname</LabelField>
+          <ValueField>ID</ValueField>
+          <LabelField>Resort</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
@@ -2439,8 +2422,8 @@ where rtrim(sg.descrip) in(@pFBsp_group)</CommandText>
       <ValidValues>
         <DataSetReference>
           <DataSetName>FBMembership</DataSetName>
-          <ValueField>SalespointGroup</ValueField>
-          <LabelField>SalespointGroup</LabelField>
+          <ValueField>ldapgroup</ValueField>
+          <LabelField>ldapgroup</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
