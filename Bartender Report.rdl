@@ -138,25 +138,21 @@ order by descrip</CommandText>
       <Query>
         <DataSourceName>DomoLookup</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@User">
+          <QueryParameter Name="@LdapUsername">
             <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>GetResortMembership</CommandText>
+        <CommandText>GetADResortMembership</CommandText>
       </Query>
       <Fields>
-        <Field Name="IsMemberOfGroup">
-          <DataField>IsMemberOfGroup</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
-        </Field>
         <Field Name="Resort">
           <DataField>Resort</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="resortname">
-          <DataField>resortname</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="ID">
+          <DataField>ID</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
         </Field>
       </Fields>
     </DataSet>
@@ -164,36 +160,23 @@ order by descrip</CommandText>
       <Query>
         <DataSourceName>DomoLookup</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@User">
-            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
-          </QueryParameter>
           <QueryParameter Name="@Resort">
             <Value>=Parameters!pResort.Value</Value>
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
+          <QueryParameter Name="@LdapUsername">
+            <Value>=right(User!UserID, len(User!UserID)-instr(User!UserID,"\"))</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>GetFBMembership</CommandText>
+        <CommandText>GetADFBMembership</CommandText>
       </Query>
       <Fields>
-        <Field Name="IsMemberOfGroup">
-          <DataField>IsMemberOfGroup</DataField>
-          <rd:TypeName>System.Boolean</rd:TypeName>
-        </Field>
-        <Field Name="SalespointGroup">
-          <DataField>SalespointGroup</DataField>
+        <Field Name="ldapgroup">
+          <DataField>ldapgroup</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
-      <Filters>
-        <Filter>
-          <FilterExpression>=left(Fields!SalespointGroup.Value,2)</FilterExpression>
-          <Operator>In</Operator>
-          <FilterValues>
-            <FilterValue>=Parameters!pResort.Value</FilterValue>
-          </FilterValues>
-        </Filter>
-      </Filters>
     </DataSet>
     <DataSet Name="GetSalespoints">
       <Query>
@@ -776,7 +759,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 1.0</Value>
+                                  <Value>v 1.1</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -871,8 +854,8 @@ order by sh.operator</CommandText>
       <ValidValues>
         <DataSetReference>
           <DataSetName>ResortMembership</DataSetName>
-          <ValueField>Resort</ValueField>
-          <LabelField>resortname</LabelField>
+          <ValueField>ID</ValueField>
+          <LabelField>Resort</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
@@ -881,15 +864,15 @@ order by sh.operator</CommandText>
       <DefaultValue>
         <DataSetReference>
           <DataSetName>FBMembership</DataSetName>
-          <ValueField>SalespointGroup</ValueField>
+          <ValueField>ldapgroup</ValueField>
         </DataSetReference>
       </DefaultValue>
       <Prompt>Salespoint Group</Prompt>
       <ValidValues>
         <DataSetReference>
           <DataSetName>FBMembership</DataSetName>
-          <ValueField>SalespointGroup</ValueField>
-          <LabelField>SalespointGroup</LabelField>
+          <ValueField>ldapgroup</ValueField>
+          <LabelField>ldapgroup</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
