@@ -12,10 +12,21 @@
     <DataSet Name="BookingSchedule">
       <Query>
         <DataSourceName>DataSource1</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@pActivity">
+            <Value>=Parameters!pActivity.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
-declare @StartDate datetime -- ='2019-04-17'
-declare @EndDate datetime -- ='2019-04-19 23:59:59'
-declare @pActivity varchar(20) -- ='paintball'
+-- declare @StartDate datetime ='2019-04-17'
+-- declare @EndDate datetime ='2019-04-19'
+-- declare @pActivity varchar(20) ='paintball'
 
 ;with cteData as
 (
@@ -24,36 +35,36 @@ select rs.reserv_no as ResNo
 	, rs.acct_desc
 	, concat(rtrim(rs.first_name),' ',rtrim(rs.last_name)) as ContactName
 	, case 
-		when rs.pickup_loc=1 then 'SKI'
-		when rs.pickup_loc in(4,8,11) then 'TUBING'
-		when rs.pickup_loc=5 then 'ROPESCOURSE'
-		when rs.pickup_loc=9 then 'RT MOUNTAIN ADV'
-		when rs.pickup_loc=10 then 'PAINTBALL'
-		when rs.pickup_loc=12 then 'VERTICAL TREK'
+		when rs.pickup_loc=0 then 'SKI' -- not defined yet
+		when rs.pickup_loc=0 then 'TUBING' -- not defined yet
+		when rs.pickup_loc=8 then 'ROPESCOURSE'
+		when rs.pickup_loc=6 then 'RT MOUNTAIN ADV'
+		when rs.pickup_loc=7 then 'PAINTBALL'
+		when rs.pickup_loc=9 then 'VERTICAL TREK'
 		else ''
 	  end as Activity
 	, case 
-		when rs.pickup_loc=1 then rs.descrip2
+		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc in(4,8,11) then rs.descrip2
+		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
 		else 0
 	  end as Tubing 
 	, case 
-		when rs.pickup_loc=5 then rs.descrip2
+		when rs.pickup_loc=8 then rs.descrip2
 		else 0
 	  end as RopesCourse
 	, case 
-		when rs.pickup_loc=9 then rs.descrip2
+		when rs.pickup_loc=6 then rs.descrip2
 		else 0
 	  end as RtMntAdv
 	, case 
-		when rs.pickup_loc=10 then rs.descrip2
+		when rs.pickup_loc=7 then rs.descrip2
 		else 0
 	  end as Paintball
 	, case 
-		when rs.pickup_loc=12 then rs.descrip2
+		when rs.pickup_loc=9 then rs.descrip2
 		else 0
 	  end as VerTrek
 	, rs.descrip2 as NumberOfGuests
@@ -72,7 +83,7 @@ select rs.reserv_no as ResNo
 from tr_save t
 left join resrvatn rs on t.reserv_no=rs.reserv_no
 left join sh_save s on t.sale_no=s.sale_no
-where rs.start_date between @StartDate and @EndDate
+where rs.start_date between @StartDate and @EndDate + ' 23:59:59'
 	and left(rs.SalesPoint,2)='RT'
 	and rs.acct_name&lt;&gt;'*RESRVATN*'
 
@@ -83,36 +94,36 @@ select rs.reserv_no as ResNo
 	, rs.acct_desc
 	, concat(rtrim(rs.first_name),' ',rtrim(rs.last_name)) as ContactName
 	, case 
-		when rs.pickup_loc=1 then 'SKI'
-		when rs.pickup_loc in(4,8,11) then 'TUBING'
-		when rs.pickup_loc=5 then 'ROPESCOURSE'
-		when rs.pickup_loc=9 then 'RT MOUNTAIN ADV'
-		when rs.pickup_loc=10 then 'PAINTBALL'
-		when rs.pickup_loc=12 then 'VERTICAL TREK'
+		when rs.pickup_loc=0 then 'SKI' -- not defined yet
+		when rs.pickup_loc=0 then 'TUBING' -- not defined yet
+		when rs.pickup_loc=8 then 'ROPESCOURSE'
+		when rs.pickup_loc=6 then 'RT MOUNTAIN ADV'
+		when rs.pickup_loc=7 then 'PAINTBALL'
+		when rs.pickup_loc=9 then 'VERTICAL TREK'
 		else ''
 	  end as Activity
 	, case 
-		when rs.pickup_loc=1 then rs.descrip2
+		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc in(4,8,11) then rs.descrip2
+		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
 		else 0
 	  end as Tubing 
 	, case 
-		when rs.pickup_loc=5 then rs.descrip2
+		when rs.pickup_loc=8 then rs.descrip2
 		else 0
 	  end as RopesCourse
 	, case 
-		when rs.pickup_loc=9 then rs.descrip2
+		when rs.pickup_loc=6 then rs.descrip2
 		else 0
 	  end as RtMntAdv
 	, case 
-		when rs.pickup_loc=10 then rs.descrip2
+		when rs.pickup_loc=7 then rs.descrip2
 		else 0
 	  end as Paintball
 	, case 
-		when rs.pickup_loc=12 then rs.descrip2
+		when rs.pickup_loc=9 then rs.descrip2
 		else 0
 	  end as VerTrek
 	, rs.descrip2 as NumberOfGuests
@@ -131,7 +142,7 @@ select rs.reserv_no as ResNo
 from transact t
 left join resrvatn rs on t.reserv_no=rs.reserv_no
 left join sale_hdr s on t.sale_no=s.sale_no
-where rs.start_date between @StartDate and @EndDate
+where rs.start_date between @StartDate and @EndDate + ' 23:59:59'
 	and left(rs.SalesPoint,2)='RT'
 	and rs.acct_name&lt;&gt;'*RESRVATN*'
 )
@@ -2145,7 +2156,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -2245,8 +2256,8 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
         <Values>
           <Value>SKI</Value>
           <Value>TUBING</Value>
-          <Value>ROPES COURSE</Value>
-          <Value>RT MTN ADVENTURES</Value>
+          <Value>ROPESCOURSE</Value>
+          <Value>RT MOUNTAIN ADV</Value>
           <Value>PAINTBALL</Value>
           <Value>VERTICAL TREK</Value>
         </Values>
