@@ -68,8 +68,8 @@ select rs.reserv_no as ResNo
 		else 0
 	  end as VerTrek
 	, rs.descrip2 as NumberOfGuests
-	, rs.start_date as ArrivalDate
-	, rs.end_date as DepartDate
+	, convert(varchar,rs.start_date,120) as ArrivalDate
+	, convert(varchar,rs.end_date,120) as DepartDate
 	, case 
 		when rs.user_code3=1 then 0
 		when rs.user_code3=2 then .5
@@ -228,7 +228,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                   <Width>0.95625in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1.10416in</Width>
+                  <Width>0.74999in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1.72917in</Width>
@@ -237,13 +237,13 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                   <Width>1.60417in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>0.53125in</Width>
+                  <Width>0.77084in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>0.54167in</Width>
+                  <Width>0.77083in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>0.44792in</Width>
+                  <Width>0.33334in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>0.45833in</Width>
@@ -1206,7 +1206,6 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                                   <Value>=Fields!ArrivalDate.Value</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
-                                    <Format>h:mm tt</Format>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -1236,7 +1235,6 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                                   <Value>=Fields!DepartDate.Value</Value>
                                   <Style>
                                     <FontSize>8pt</FontSize>
-                                    <Format>hh:mm tt</Format>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -2156,7 +2154,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.3</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.4</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
