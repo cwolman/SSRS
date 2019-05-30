@@ -1883,7 +1883,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <TablixMember>
                   <Group Name="table1_ArrivalDateFormat">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!ArrivalDate.Value</GroupExpression>
+                      <GroupExpression>=FormatDateTime(Fields!ArrivalDate.Value,DateFormat.ShortDate)</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
@@ -1900,6 +1900,11 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                       <Group Name="table1_Details_Group">
                         <DataElementName>Detail</DataElementName>
                       </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!ArrivalDate.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
                       <TablixMembers>
                         <TablixMember />
                       </TablixMembers>
@@ -2154,7 +2159,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.4</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.5</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
