@@ -85,7 +85,7 @@ left join resrvatn rs on t.reserv_no=rs.reserv_no
 left join sh_save s on t.sale_no=s.sale_no
 where rs.start_date between @StartDate and @EndDate + ' 23:59:59'
 	and left(rs.SalesPoint,2)='RT'
-	and rs.acct_name&lt;&gt;'*RESRVATN*'
+	-- and rs.acct_name&lt;&gt;'*RESRVATN*'
 
 union
 
@@ -144,7 +144,7 @@ left join resrvatn rs on t.reserv_no=rs.reserv_no
 left join sale_hdr s on t.sale_no=s.sale_no
 where rs.start_date between @StartDate and @EndDate + ' 23:59:59'
 	and left(rs.SalesPoint,2)='RT'
-	and rs.acct_name&lt;&gt;'*RESRVATN*'
+	-- and rs.acct_name&lt;&gt;'*RESRVATN*'
 )
 
 select *
@@ -2159,7 +2159,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.5</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.6</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
