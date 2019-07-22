@@ -100,6 +100,7 @@ as
 	select sh.operator
 		, sh.sale_no
 		, ts.department
+		, ts.item
 		, d.udf_text1 as sales_category
 		, ts.extension-(ts.tax_amount+ts.tax_amt2) as net_revenue
 		, ts.special
@@ -128,6 +129,7 @@ select operator
 	, 0  as net_revenue
 	, 0  as tipout_bar
 	, 0  as tipout_bus 
+	, '' as tipString
 	, 0  as tips_total
 	, 0  as spec_amt
 	, '' as specString
@@ -150,6 +152,7 @@ from (
 			, sum(net_revenue) as net_revenue
 			, case when sales_category='BAR' then sum(net_revenue)*.03 else 0 end as tipout_bar
 			, case when sales_category='FOOD' then sum(net_revenue)*.03 else 0 end as tipout_bus
+			, '' as tipString
 			, 0 as tips_total
 			, 0  as spec_amt
 			, '' as specString
@@ -174,6 +177,7 @@ select operator
 	, 0  as net_revenue
 	, 0  as tipout_bar
 	, 0  as tipout_bus
+	, '' as tipString
 	, 0  as tips_total
 	, disc_amt as spec_amt
 	, concat(cast(isnull(s.descrip,'') as char(16)),space(1),sale_no,space(1),replicate(' ',7-len(disc_amt)) + cast(disc_amt as varchar)) as specString
@@ -196,12 +200,13 @@ select operator
 	, 0  as net_revenue
 	, 0  as tipout_bar
 	, 0  as tipout_bus
+	, concat(cast(item as char(28)),space(1),replicate(' ',7-len(sum(net_revenue))) + cast(sum(net_revenue) as varchar)) as tipString
 	, sum(net_revenue) as tips_total
 	, 0  as spec_amt
 	, '' as specString
 from cteSales
 where department='**TIPS**'
-group by operator, department </CommandText>
+group by operator, department, item </CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -260,6 +265,10 @@ group by operator, department </CommandText>
         <Field Name="tipout_bus">
           <DataField>tipout_bus</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="tipString">
+          <DataField>tipString</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="spec_amt">
           <DataField>spec_amt</DataField>
@@ -1180,7 +1189,7 @@ order by sh.operator</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox4">
+                        <Textbox Name="Textbox96">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -1189,15 +1198,17 @@ order by sh.operator</CommandText>
                                 <TextRun>
                                   <Value />
                                   <Style>
-                                    <FontFamily>courier New</FontFamily>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Left</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <rd:DefaultName>Textbox96</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1218,14 +1229,136 @@ order by sh.operator</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox220">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Tip Type                      Amount </Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Typewriter</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox219</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <BottomBorder>
+                              <Style>Solid</Style>
+                            </BottomBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Tablix Name="Tablix2">
+                          <TablixBody>
+                            <TablixColumns>
+                              <TablixColumn>
+                                <Width>2.70001in</Width>
+                              </TablixColumn>
+                            </TablixColumns>
+                            <TablixRows>
+                              <TablixRow>
+                                <Height>0.25in</Height>
+                                <TablixCells>
+                                  <TablixCell>
+                                    <CellContents>
+                                      <Textbox Name="tipString">
+                                        <CanShrink>true</CanShrink>
+                                        <KeepTogether>true</KeepTogether>
+                                        <Paragraphs>
+                                          <Paragraph>
+                                            <TextRuns>
+                                              <TextRun>
+                                                <Value>=Fields!tipString.Value</Value>
+                                                <Style>
+                                                  <FontFamily>Lucida Sans Typewriter</FontFamily>
+                                                  <FontSize>8pt</FontSize>
+                                                  <FontWeight>Normal</FontWeight>
+                                                </Style>
+                                              </TextRun>
+                                            </TextRuns>
+                                            <Style />
+                                          </Paragraph>
+                                        </Paragraphs>
+                                        <rd:DefaultName>tipString</rd:DefaultName>
+                                        <Style>
+                                          <Border>
+                                            <Style>None</Style>
+                                          </Border>
+                                          <BackgroundColor>White</BackgroundColor>
+                                          <PaddingLeft>2pt</PaddingLeft>
+                                          <PaddingRight>2pt</PaddingRight>
+                                          <PaddingTop>2pt</PaddingTop>
+                                          <PaddingBottom>2pt</PaddingBottom>
+                                        </Style>
+                                      </Textbox>
+                                    </CellContents>
+                                  </TablixCell>
+                                </TablixCells>
+                              </TablixRow>
+                            </TablixRows>
+                          </TablixBody>
+                          <TablixColumnHierarchy>
+                            <TablixMembers>
+                              <TablixMember />
+                            </TablixMembers>
+                          </TablixColumnHierarchy>
+                          <TablixRowHierarchy>
+                            <TablixMembers>
+                              <TablixMember>
+                                <Group Name="Details1" />
+                                <Visibility>
+                                  <Hidden>=iif(Fields!tipString.Value = "", TRUE, FALSE)</Hidden>
+                                </Visibility>
+                              </TablixMember>
+                            </TablixMembers>
+                          </TablixRowHierarchy>
+                          <KeepTogether>true</KeepTogether>
+                          <DataSetName>GatherData</DataSetName>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </Tablix>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.2in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="dcTotal2">
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Label>Credit Card Tips</Label>
-                                  <Value>="Credit Card Tips " &amp; space(19-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
+                                  <Label>Total Tips</Label>
+                                  <Value>="Total Tips " &amp; space(19-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -1893,7 +2026,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 1.1</Value>
+                                  <Value>v 1.2</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
@@ -2051,16 +2184,19 @@ order by sh.operator</CommandText>
                     <TablixMember>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
                   </TablixMembers>
-                  <Visibility>
-                    <Hidden>=iif(Fields!operator.Value = "", TRUE, FALSE)</Hidden>
-                  </Visibility>
                   <KeepTogether>true</KeepTogether>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>GatherData</DataSetName>
-            <Height>8.45in</Height>
+            <Height>8.9in</Height>
             <Width>2.70001in</Width>
             <Style>
               <Border>
@@ -2069,7 +2205,7 @@ order by sh.operator</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>8.45in</Height>
+        <Height>9in</Height>
         <Style />
       </Body>
       <Width>2.70001in</Width>
