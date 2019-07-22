@@ -1358,7 +1358,7 @@ order by sh.operator</CommandText>
                               <TextRuns>
                                 <TextRun>
                                   <Label>Total Tips</Label>
-                                  <Value>="Total Tips " &amp; space(19-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
+                                  <Value>="Total Tips " &amp; space(25-len(trim(round(Sum(Fields!tips_total.Value),2)))) &amp; round(Sum(Fields!tips_total.Value),2)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Typewriter</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -2026,7 +2026,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 1.2</Value>
+                                  <Value>v 1.3</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
