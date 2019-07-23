@@ -72,7 +72,10 @@ ORDER BY descrip</CommandText>
             <Value>=Parameters!operators.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+        <CommandText>declare @sDate as datetime=concat(cast(@startDate as date),' 05:00:00')
+declare @eDate as datetime=concat(dateadd(d, 1, cast(@endDate as date)),' 04:59:59')
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
 select *
 	, case when rn=1 then net_sales_less_tips else 0 end as op_total
@@ -102,7 +105,7 @@ select cast(date_time as date) as dte
 	  case when pr_ctr_5=1 then pcsplit_5 else 0 end +
 	  case when pr_ctr_6=1 then pcsplit_6 else 0 end) as tips
 from transact
-where date_time between @startDate and dateadd(s, -1, @endDate+1)
+where date_time between @sDate and @eDate
 		and salespoint in(@salespoints)
 		and operator in(@operators)
 		and department&lt;&gt;'**TRANS**'
@@ -122,7 +125,7 @@ cross apply (values
 				, (pmt_type4, pmt_amt4)
 			)pays (pmt_type, pmt_amt)
 join pmt_type pt on pt.pmtype_no=pays.pmt_type
-where date_time between @startDate and dateadd(s, -1, @endDate+1)
+where date_time between @sDate and @eDate
 		and salespoint in(@salespoints)
 		and operator in(@operators)
 		and pays.pmt_amt&lt;&gt;0
@@ -1341,7 +1344,7 @@ where t.date_time between @startDate and dateadd(s, -1, @endDate+1)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Tips Report ●  v1.1</Value>
+                      <Value>Peak Resorts  ●  Tips Report ●  v1.2</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
