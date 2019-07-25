@@ -4,8 +4,12 @@
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
     <DataSource Name="DataSource1">
-      <DataSourceReference>/ReportDataSource</DataSourceReference>
-      <rd:SecurityType>None</rd:SecurityType>
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString>Data Source=ms-sql1;Initial Catalog=SiriusSQLPK</ConnectString>
+        <Prompt>Specify a user name and password for data source DataSource1:</Prompt>
+      </ConnectionProperties>
+      <rd:SecurityType>DataBase</rd:SecurityType>
       <rd:DataSourceID>97e04d8f-a447-4465-af0f-0ff6d5e6bc06</rd:DataSourceID>
     </DataSource>
   </DataSources>
@@ -20,15 +24,113 @@
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
-select g.guest_no
-	, concat(rtrim(g.last_name),', ',rtrim(g.first_name)) as guest_name
+;with basedata as
+(
+select g.e_mail
+	, rtrim(g.last_name) as last_name
+	, rtrim(g.first_name) as first_name
+	, g.guest_no
+	, g.parent_no
+	, gp.pass_no
+	, gp.department
+	, gp.category
+	, gp.item
+	, cast(gp.expires as date) as expires
+	, case when substring(gp.salespoint,3,2)='WB' then 'Online' else 'Window' end as sale_type
+	, case when datalength(g.mug_shot)=0 then 'N' else 'Y' end as Picture
+	, case 
+		when left(ga.tag_line,6)='Accept' then 'Y' 
+		when left(ga.tag_line,6)='Manual' then 'MANUAL'
+		else 'N' 
+	  end as Liability
+	, case 
+		when gp.voided_by='' then 'N'
+		else 'Y'
+	  end as Voided
+	, gp.printcount
+	, t.sale_no
+	, dbo.cw_fn_encode128B(t.sale_no) as sale_no_barcode
 	, dbo.cw_fn_encode128B(g.guest_no) as guest_no_barcode
-	, count(g.guest_no) over () as record_count
-from transact t 
-join gst_pass gp on t.trans_no=gp.trans_no
+from gst_pass gp
+join transact t on gp.trans_no=t.trans_no 
 join guests g on gp.guest_no=g.guest_no
-where t.sale_no=@sale_no
-order by g.last_name, g.first_name</CommandText>
+left join gst_actv ga on g.guest_no=ga.guest_no
+					 and ga.activ_type=400
+					 and ga.tag_line like '%PKPASS1920RISK%'
+where year(gp.expires)=2020
+	and gp.department='pk_passes'
+	and gp.category='passwinter'
+	and sale_no=@sale_no
+)
+, ctePrinted as
+(
+select b.*
+	, max(ga.date_time) as last_printed_date
+from basedata b
+left join gst_actv ga on b.guest_no=ga.guest_no
+   					 and ga.tag_line like '%print pass #%'
+group by b.e_mail
+	, b.last_name
+	, b.first_name
+	, b.guest_no
+	, b.parent_no
+	, b.pass_no
+	, b.department
+	, b.category
+	, b.item
+	, b.expires
+	, b.sale_type
+	, b.Picture
+	, b.Liability
+	, b.Voided
+	, b.printcount
+	, b.sale_no
+	, b.sale_no_barcode
+	, b.guest_no_barcode
+)
+, ctePrintedFinal as
+(
+select *
+	, case 
+		when printcount=0 or printcount&gt;0 and last_printed_date between '2019-03-01' and '2019-06-01' then 'N'
+		else 'Y'
+	  end as Printed
+from ctePrinted
+)
+, cteFinal as
+(
+select *
+	, count(sale_no) over (partition by sale_no order by sale_no) as number_of_people
+	, sum(case 
+			when picture='Y' then 1
+			else 0
+		  end) over (partition by sale_no order by sale_no) as number_with_picture
+	, sum(case 
+			when Liability='Y' then 1
+			else 0
+		  end) over (partition by sale_no order by sale_no) as number_with_liability
+	, sum(case 
+			when Printed='Y' then 1
+			else 0
+		  end) over (partition by sale_no order by sale_no) as number_printed 
+from ctePrintedFinal
+)
+
+select guest_no
+	, concat(rtrim(last_name),', ',rtrim(first_name)) as guest_name
+	, dbo.cw_fn_encode128B(guest_no) as guest_no_barcode
+	, count(guest_no) over () as record_count
+	, printed
+	, picture
+	, liability
+	
+	, case 
+		when number_of_people&lt;&gt;number_with_picture then 'N'
+		when number_of_people&lt;&gt;number_with_liability then 'N'
+		else 'Y'
+	  end as ready_to_ship
+from cteFinal
+order by last_name, first_name</CommandText>
       </Query>
       <Fields>
         <Field Name="guest_no">
@@ -46,6 +148,22 @@ order by g.last_name, g.first_name</CommandText>
         <Field Name="record_count">
           <DataField>record_count</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="printed">
+          <DataField>printed</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="picture">
+          <DataField>picture</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="liability">
+          <DataField>liability</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ready_to_ship">
+          <DataField>ready_to_ship</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -161,6 +279,44 @@ order by g.last_name, g.first_name</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>record_count</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox6">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>#333333</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox6</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -359,7 +515,7 @@ order by g.last_name, g.first_name</CommandText>
                                   </Border>
                                   <BottomBorder>
                                     <Color>Black</Color>
-                                    <Style>Solid</Style>
+                                    <Style>None</Style>
                                     <Width>1pt</Width>
                                   </BottomBorder>
                                   <LeftBorder>
@@ -382,6 +538,57 @@ order by g.last_name, g.first_name</CommandText>
                             <TablixMember />
                           </TablixMembers>
                         </TablixMember>
+                        <TablixMember>
+                          <TablixHeader>
+                            <Size>2.93229in</Size>
+                            <CellContents>
+                              <Textbox Name="Textbox5">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value>=iif(Fields!printed.Value="Y","Printed","")+" "+iif(Fields!picture.Value="Y","Photo","")+" "+iif(Fields!liability.Value="Y","Liability","")</Value>
+                                        <Style>
+                                          <FontWeight>Normal</FontWeight>
+                                          <Color>#333333</Color>
+                                        </Style>
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style>
+                                      <TextAlign>Center</TextAlign>
+                                    </Style>
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Textbox5</rd:DefaultName>
+                                <Style>
+                                  <Border>
+                                    <Style>None</Style>
+                                  </Border>
+                                  <BottomBorder>
+                                    <Color>Black</Color>
+                                    <Style>Solid</Style>
+                                    <Width>1pt</Width>
+                                  </BottomBorder>
+                                  <LeftBorder>
+                                    <Style>Solid</Style>
+                                  </LeftBorder>
+                                  <RightBorder>
+                                    <Style>Solid</Style>
+                                  </RightBorder>
+                                  <BackgroundColor>White</BackgroundColor>
+                                  <VerticalAlign>Middle</VerticalAlign>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
+                            </CellContents>
+                          </TablixHeader>
+                          <KeepWithGroup>Before</KeepWithGroup>
+                        </TablixMember>
                       </TablixMembers>
                     </TablixMember>
                   </TablixMembers>
@@ -391,7 +598,7 @@ order by g.last_name, g.first_name</CommandText>
             <DataSetName>ds</DataSetName>
             <Top>1.23611in</Top>
             <Left>0.13542in</Left>
-            <Height>1.30208in</Height>
+            <Height>1.55208in</Height>
             <Width>3in</Width>
             <Style>
               <Border>
@@ -431,6 +638,27 @@ order by g.last_name, g.first_name</CommandText>
                   <TextAlign>Center</TextAlign>
                 </Style>
               </Paragraph>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>Ship - </Value>
+                    <Style>
+                      <FontFamily>Segoe UI Light</FontFamily>
+                      <FontSize>20pt</FontSize>
+                    </Style>
+                  </TextRun>
+                  <TextRun>
+                    <Value>=Fields!ready_to_ship.Value</Value>
+                    <Style>
+                      <FontFamily>Segoe UI Light</FontFamily>
+                      <FontSize>20pt</FontSize>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style>
+                  <TextAlign>Center</TextAlign>
+                </Style>
+              </Paragraph>
             </Paragraphs>
             <rd:WatermarkTextbox>Title</rd:WatermarkTextbox>
             <rd:DefaultName>ReportTitle</rd:DefaultName>
@@ -449,7 +677,7 @@ order by g.last_name, g.first_name</CommandText>
             </Style>
           </Textbox>
         </ReportItems>
-        <Height>2.53819in</Height>
+        <Height>3.09027in</Height>
         <Style>
           <Border>
             <Style>None</Style>
@@ -505,7 +733,7 @@ order by g.last_name, g.first_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Guests by sale_no - Epson ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  Guests by sale_no - Epson ●  v1.1</Value>
                       <Style>
                         <FontSize>8pt</FontSize>
                       </Style>
@@ -570,6 +798,5 @@ order by g.last_name, g.first_name</CommandText>
     </GridLayoutDefinition>
   </ReportParametersLayout>
   <rd:ReportUnitType>Inch</rd:ReportUnitType>
-  <rd:ReportServerUrl>http://pk-sql01/reportserver</rd:ReportServerUrl>
   <rd:ReportID>4be947b4-7ce3-4b32-9af2-c21c1dda8845</rd:ReportID>
 </Report>
