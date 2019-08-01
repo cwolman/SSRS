@@ -20,11 +20,15 @@
           <QueryParameter Name="@endDate">
             <Value>=Parameters!endDate.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@resort">
+            <Value>=Parameters!resort.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>set transaction isolation level read uncommitted
 
--- declare @startDate date='2019-08-01'
--- declare @endDate date='2019-08-15'
+ -- declare @startDate date='2019-08-01'
+ -- declare @endDate date='2019-08-15'
+ -- declare @resort char(2)='AT'
 
 ;with basedata as 
 (
@@ -184,6 +188,7 @@ join items i on tr.department=i.department and tr.category=i.category and tr.ite
 -- where item like 'zip%' and department='rt_tixsum'
 where tr.category='zip_mods'
 	and cast(tr.start_date as date) between @startDate and @endDate
+	and left(tr.salespoint,2) in(@resort)
 group by cast(tr.start_date as date)
 	, format(convert(datetime,
 	case 
@@ -1995,7 +2000,7 @@ order by left(tr.salespoint,2)</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Zipline Reservations  ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  Zipline Reservations  ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
