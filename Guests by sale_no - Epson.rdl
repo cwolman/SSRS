@@ -114,6 +114,8 @@ select *
 			else 0
 		  end) over (partition by sale_no order by sale_no) as number_printed 
 from ctePrintedFinal
+where Voided='N'
+	and Liability&lt;&gt;'Manual'
 )
 
 select guest_no
@@ -733,7 +735,7 @@ order by last_name, first_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Guests by sale_no - Epson ●  v1.1</Value>
+                      <Value>Peak Resorts  ●  Guests by sale_no - Epson ●  v1.2</Value>
                       <Style>
                         <FontSize>8pt</FontSize>
                       </Style>
