@@ -35,8 +35,8 @@ select rs.reserv_no as ResNo
 	, rs.acct_desc
 	, concat(rtrim(rs.first_name),' ',rtrim(rs.last_name)) as ContactName
 	, case 
-		when rs.pickup_loc=0 then 'SKI' -- not defined yet
-		when rs.pickup_loc=0 then 'TUBING' -- not defined yet
+		when rs.pickup_loc=10 then 'SKI' 
+		when rs.pickup_loc=11 then 'TUBING' 
 		when rs.pickup_loc=8 then 'ROPESCOURSE'
 		when rs.pickup_loc=6 then 'RT MOUNTAIN ADV'
 		when rs.pickup_loc=7 then 'PAINTBALL'
@@ -44,11 +44,11 @@ select rs.reserv_no as ResNo
 		else ''
 	  end as Activity
 	, case 
-		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
+		when rs.pickup_loc=10 then rs.descrip2 
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
+		when rs.pickup_loc=11 then rs.descrip2 
 		else 0
 	  end as Tubing 
 	, case 
@@ -94,8 +94,8 @@ select rs.reserv_no as ResNo
 	, rs.acct_desc
 	, concat(rtrim(rs.first_name),' ',rtrim(rs.last_name)) as ContactName
 	, case 
-		when rs.pickup_loc=0 then 'SKI' -- not defined yet
-		when rs.pickup_loc=0 then 'TUBING' -- not defined yet
+		when rs.pickup_loc=10 then 'SKI' 
+		when rs.pickup_loc=11 then 'TUBING' 
 		when rs.pickup_loc=8 then 'ROPESCOURSE'
 		when rs.pickup_loc=6 then 'RT MOUNTAIN ADV'
 		when rs.pickup_loc=7 then 'PAINTBALL'
@@ -103,11 +103,11 @@ select rs.reserv_no as ResNo
 		else ''
 	  end as Activity
 	, case 
-		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
+		when rs.pickup_loc=10 then rs.descrip2 
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc=0 then rs.descrip2 -- not defined yet
+		when rs.pickup_loc=11 then rs.descrip2 
 		else 0
 	  end as Tubing 
 	, case 
@@ -2159,7 +2159,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.6</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.7</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
