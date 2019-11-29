@@ -189,7 +189,9 @@
            ISNULL(addr.[state],'')                                                    AS [state],
            ISNULL(addr.zip,'')                                                        AS zip,
            ISNULL(addr.area_code,'')                                                  AS area_code,
-           ISNULL(addr.phone,'')                                                      AS phone
+           ISNULL(addr.phone,'')                                                      AS phone,
+           coalesce(pss.voided_for,'')			  AS voided,
+           case when pss.printcount&gt;0 then 'Yes' else 'No' end	  AS printed
   FROM     #tr tr 
            INNER JOIN dbo.sale_hdr sh 
              ON tr.sale_no = sh.sale_no
@@ -216,7 +218,7 @@
                 AND ti2.guest_no = ti.guest_no -- pass numbers  
            LEFT JOIN gst_pass pss 
              ON pss.pass_no = CAST(ti2.info_num AS NUMERIC(17,0)) 
-                AND pss.voided_by = '' -- exclude voided passes  
+                -- AND pss.voided_by = '' -- exclude voided passes  
            OUTER APPLY (SELECT   TOP ( 1 ) ad.address_id, 
                                            ad.address, 
                                            ad.address2, 
@@ -382,6 +384,14 @@
         </Field>
         <Field Name="phone">
           <DataField>phone</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="voided">
+          <DataField>voided</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="printed">
+          <DataField>printed</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1553,7 +1563,7 @@ order by full_name</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>1.125in</Height>
+                  <Height>1.36458in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -1725,7 +1735,7 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.875in</Top>
+                              <Top>1.19791in</Top>
                               <Height>0.16667in</Height>
                               <Width>0.67in</Width>
                               <ZIndex>4</ZIndex>
@@ -1751,7 +1761,7 @@ order by full_name</CommandText>
                                   <Style />
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.875in</Top>
+                              <Top>1.19791in</Top>
                               <Left>0.69792in</Left>
                               <Height>0.16667in</Height>
                               <Width>2.75in</Width>
@@ -1808,8 +1818,7 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.33333in</Top>
-                              <Left>3.125in</Left>
+                              <Top>0.76042in</Top>
                               <Height>0.16667in</Height>
                               <Width>0.67in</Width>
                               <ZIndex>7</ZIndex>
@@ -1837,10 +1846,9 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.59375in</Top>
-                              <Left>3in</Left>
+                              <Top>1.03124in</Top>
                               <Height>0.16667in</Height>
-                              <Width>0.795in</Width>
+                              <Width>0.67in</Width>
                               <ZIndex>8</ZIndex>
                               <Style>
                                 <FontFamily />
@@ -1866,8 +1874,8 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.16667in</Top>
-                              <Left>3.125in</Left>
+                              <Top>0.13541in</Top>
+                              <Left>2.77792in</Left>
                               <Height>0.16667in</Height>
                               <Width>0.67in</Width>
                               <ZIndex>9</ZIndex>
@@ -1896,8 +1904,8 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.16667in</Top>
-                              <Left>3.875in</Left>
+                              <Top>0.13541in</Top>
+                              <Left>3.52792in</Left>
                               <Height>0.16667in</Height>
                               <Width>1.30208in</Width>
                               <ZIndex>10</ZIndex>
@@ -1926,8 +1934,8 @@ order by full_name</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.33333in</Top>
-                              <Left>3.875in</Left>
+                              <Top>0.77431in</Top>
+                              <Left>0.69792in</Left>
                               <Height>0.16667in</Height>
                               <Width>1.30208in</Width>
                               <ZIndex>11</ZIndex>
@@ -1953,12 +1961,134 @@ order by full_name</CommandText>
                                   <Style />
                                 </Paragraph>
                               </Paragraphs>
-                              <Top>0.59375in</Top>
-                              <Left>3.875in</Left>
+                              <Top>1.01042in</Top>
+                              <Left>0.69792in</Left>
                               <Height>0.16667in</Height>
                               <Width>1.30208in</Width>
                               <ZIndex>12</ZIndex>
                               <Style>
+                                <FontFamily />
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="textbox44">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Printed:</Value>
+                                      <Style>
+                                        <FontFamily />
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <FontFamily />
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <Top>0.35764in</Top>
+                              <Left>2.77792in</Left>
+                              <Height>0.16667in</Height>
+                              <Width>0.67in</Width>
+                              <ZIndex>13</ZIndex>
+                              <Style>
+                                <FontFamily />
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="textbox45">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!printed.Value</Value>
+                                      <Style>
+                                        <FontFamily />
+                                        <FontSize>8pt</FontSize>
+                                        <Color>DimGray</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <FontFamily />
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <Top>0.35764in</Top>
+                              <Left>3.52792in</Left>
+                              <Height>0.16667in</Height>
+                              <Width>1.30208in</Width>
+                              <ZIndex>14</ZIndex>
+                              <Style>
+                                <FontFamily />
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="textbox46">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Voided:</Value>
+                                      <Style>
+                                        <FontFamily />
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <FontFamily />
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <Top>0.59375in</Top>
+                              <Left>2.77792in</Left>
+                              <Height>0.16667in</Height>
+                              <Width>0.67in</Width>
+                              <ZIndex>15</ZIndex>
+                              <Style>
+                                <FontFamily />
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="textbox47">
+                              <CanGrow>true</CanGrow>
+                              <CanShrink>true</CanShrink>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!voided.Value</Value>
+                                      <Style>
+                                        <FontFamily />
+                                        <FontSize>8pt</FontSize>
+                                        <Color>DimGray</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <FontFamily />
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <Top>0.59375in</Top>
+                              <Left>3.52792in</Left>
+                              <Height>0.16667in</Height>
+                              <Width>2.18486in</Width>
+                              <ZIndex>16</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
                                 <FontFamily />
                               </Style>
                             </Textbox>
@@ -2318,7 +2448,7 @@ order by full_name</CommandText>
             </TablixRowHierarchy>
             <DataSetName>DataSet1</DataSetName>
             <Top>0.625in</Top>
-            <Height>2.175in</Height>
+            <Height>2.41458in</Height>
             <Width>8.05951in</Width>
             <ZIndex>2</ZIndex>
             <Style />
@@ -2370,7 +2500,7 @@ order by full_name</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ● Club Member Purhcases by Item  ●  v1.0 </Value>
+                      <Value>Peak Resorts  ● Club Member Purhcases by Item  ●  v1.1 </Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
