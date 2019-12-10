@@ -47,6 +47,7 @@ where (t.department='rt_seaspgm' and t.category='devo' and t.item like 'mtnexp%'
 (
 select p.*
 	, dbo.proper(concat(rtrim(g.last_name),', ',rtrim(g.first_name))) as passholder
+	, g.e_mail
 from passes p
 join tr_info ti on p.trans_no=ti.trans_no
 join guests g on ti.info_num=g.guest_no
@@ -60,6 +61,7 @@ select p.sale_date
 	, p.pass_no
 	, dbo.proper(t.item) as pass_modifier
 	, p.passholder
+	, p.e_mail
 from passes_guest p
 join departme d on p.department=d.department
 join category c on p.department=c.department
@@ -98,6 +100,10 @@ where i.descrip in(@pItem)</CommandText>
         </Field>
         <Field Name="passholder">
           <DataField>passholder</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="e_mail">
+          <DataField>e_mail</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -693,12 +699,13 @@ order by descrip</CommandText>
                                     <CellContents>
                                       <Textbox Name="passholder">
                                         <CanGrow>true</CanGrow>
+                                        <CanShrink>true</CanShrink>
                                         <KeepTogether>true</KeepTogether>
                                         <Paragraphs>
                                           <Paragraph>
                                             <TextRuns>
                                               <TextRun>
-                                                <Value>=Fields!passholder.Value</Value>
+                                                <Value>=Fields!passholder.Value &amp; " " &amp; Fields!e_mail.Value</Value>
                                                 <Style>
                                                   <FontWeight>Normal</FontWeight>
                                                   <Color>#333333</Color>
@@ -877,7 +884,7 @@ order by descrip</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Roundtop Mountain Explorers ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  Roundtop Mountain Explorers ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
