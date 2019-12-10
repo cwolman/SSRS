@@ -1,0 +1,3187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources>
+    <DataSource Name="RESERVATIONLIAB">
+      <DataSourceReference>/ReportDataSource</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>47bac9b4-6f84-47ff-8254-0eb30ce41081</rd:DataSourceID>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="SLCLCReservationDS">
+      <Query>
+        <DataSourceName>RESERVATIONLIAB</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@startDate">
+            <Value>=Parameters!startDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@endDate">
+            <Value>=Parameters!endDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@resort">
+            <Value>=Parameters!resort.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>set transaction isolation level read uncommitted
+-- declare @startDate datetime='2019-10-28'
+-- declare @endDate datetime='2020-03-31' + ' 23:59:59'
+-- declare @resort char(2)='WT'
+
+if object_id('tempdb..#CLC') is not null drop table #CLC
+
+-- get the mastran numbers for all reservations with the CLC parent items
+;with mastertrans as
+(
+select mastertran
+from tr_save  
+where ((department in('rt_lesswin','wt_lesswin') and item like '%1D%')
+	or (department='lm_lesswin' and item in('C_FDSK_1','C_FDSK_2','C_FDSK_3','C_FDSB_1','C_HDSK_1','C_HDSK_2','C_HDSK_3','L_HDSB_1','L_HDSB_2','L_HDSB_3','L_HDSK_1','L_HDSK_2','L_HDSK_3','M_FDSK_1','P_FDSB_1',
+										   'P_FDSB_2','P_FDSB_3','P_FDSK_1','P_FDSK_2','P_FDSK_3','P_NTSB_1','P_NTSB_2','P_NTSB_3','P_NTSK_1','P_NTSK_2','P_NTSK_3')))
+	and quantity&gt;0
+	and trans_no=mastertran
+	and start_date between @startDate and @endDate
+	and left(salespoint,2) in(@resort)
+)
+, details as
+(
+select tr.date_time as TranTransactDate
+	, tr.start_date as TranStartDate
+	, tr.salespoint
+	, tr.trans_no as TranTransNo
+	, tr.mastertran as TranMasterTran
+	, tr.sale_no
+	, tr.reserv_no as TranResNo
+	, case 
+		when tr.cnclstatus=0 then 'Live'
+		when tr.cnclstatus=1 then 'Cancel With Refund'
+		when tr.cnclstatus=2 then 'Cancel No Refund'
+	  end as TranRecordStatus
+	, tr.department as TranDepartment
+	, tr.category as TranCategory
+	, tr.item as TranItem
+	, i.descrip as ItemDescrip
+	, tr.quantity as TranQty
+	, tr.extension
+	, sum(tr.extension) over (partition by tr.mastertran) as TranExt
+	, dbo.proper(concat(rtrim(r.last_name),', ',rtrim(r.first_name))) as ResParentName
+	, r.phone as ResPhoneNumber
+	, r.res_status as ResStatus
+	, r.date_time as ResOrderDate
+	, dbo.proper(concat(rtrim(g.last_name),', ',rtrim(g.first_name))) as GuestChildName
+	, g.gender as GuestGender
+	, cast(g.birth_date as date) as GuestDOB
+	, datediff(YY,g.birth_date,getdate()) -
+		case 
+			when dateadd(YY,datediff(YY,g.birth_date,getdate()),g.birth_date)&gt;getdate() then 1
+			else 0
+		end as GuestAge
+	, g.text_5 as GuestAbility
+	, g.height as GuestHeight
+	, g.weight as GuestWeight
+	, g.notes as GuestMemo
+	, isnull(rs.descrip,'** No Reservation Status') as ResRecStatus
+	, g.number_5 as RentShoeSize
+	, '?' as RentAdultToddler
+	, '?' as RentStance
+	, '?' as Helmet
+	, case 
+		when i.descrip like 'Lunch%' then 1
+		else 0
+	  end as Lunch
+	, case
+		when i.descrip like '%Board Rent%' then 1
+		else 0
+	  end as RentalEQBoard
+	, case
+		when i.descrip like '%Ski Rent%' then 1
+		else 0
+	  end as RentalEQSki
+	, concat(dbo.proper(rtrim(a.address)),', ',dbo.proper(rtrim(a.city)),', ',rtrim(a.state),', ',rtrim(a.zip)) as AddressCityStateZip
+from tr_save tr
+join trs_info ts on tr.trans_no=ts.trans_no
+				and ts.inactive&lt;&gt;1
+				and ts.info_type=10
+join guests g on ts.guest_no=g.guest_no
+join resrvatn r on tr.reserv_no=r.reserv_no
+join res_stat rs on r.res_status=rs.res_status
+join items i on tr.department=i.department
+			and tr.category=i.category
+			and tr.item=i.item
+join addlink al on g.guest_no=al.guest_no
+left join address a on al.address_id=a.address_id
+			       and a.addr_type=1
+where tr.mastertran in(select mastertran from mastertrans)
+)
+
+select TranTransactDate
+	, TranRecordStatus
+	, TranStartDate
+	, TranMasterTran
+	, TranResNo
+	, TranExt
+	, ResParentName
+	, ResPhoneNumber
+	, ResOrderDate
+	, case 
+		when ItemDescrip like 'Trail%' or ItemDescrip like 'Mtn%' then ItemDescrip 
+		when TranItem in('C_FDSK_1','C_FDSK_2','C_FDSK_3','C_FDSB_1','C_HDSK_1','C_HDSK_2','C_HDSK_3','L_HDSB_1','L_HDSB_2','L_HDSB_3','L_HDSK_1','L_HDSK_2','L_HDSK_3','M_FDSK_1','P_FDSB_1',
+					     'P_FDSB_2','P_FDSB_3','P_FDSK_1','P_FDSK_2','P_FDSK_3','P_NTSB_1','P_NTSB_2','P_NTSB_3','P_NTSK_1','P_NTSK_2','P_NTSK_3') then ItemDescrip
+		else '' 
+	  end as ItemDescrip
+	, GuestChildName
+	, GuestGender
+	, GuestDOB
+	, GuestAge
+	, GuestAbility
+	, GuestHeight
+	, GuestWeight
+	, cast(GuestMemo as varchar(max)) as GuestMemo
+	, RentShoeSize
+	, RentAdultToddler
+	, RentStance
+	, Helmet
+	, cast(case when sum(Lunch) over (partition by TranMasterTran)&gt;0 then 'Yes' else 'No' end as varchar(3)) as Lunch
+	, cast(case when sum(RentalEQBoard) over (partition by TranMasterTran)&gt;0 then 'Yes' else 'No' end as varchar(3)) as RentalEQBoard
+	, cast(case when sum(RentalEQSki) over (partition by TranMasterTran)&gt;0 then 'Yes' else 'No' end as varchar(3)) as RentalEQSki
+	, cast(AddressCityStateZip as varchar(max)) as AddressCityStateZip
+into #CLC
+from details
+
+select distinct *
+from #CLC
+where ItemDescrip&lt;&gt;''</CommandText>
+        <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
+      </Query>
+      <Fields>
+        <Field Name="TranResNo">
+          <DataField>TranResNo</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="TranRecordStatus">
+          <DataField>TranRecordStatus</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="TranStartDate">
+          <DataField>TranStartDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="TranTransactDate">
+          <DataField>TranTransactDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="TranExt">
+          <DataField>TranExt</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="TranMasterTran">
+          <DataField>TranMasterTran</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="ResParentName">
+          <DataField>ResParentName</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ResPhoneNumber">
+          <DataField>ResPhoneNumber</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestAbility">
+          <DataField>GuestAbility</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ResOrderDate">
+          <DataField>ResOrderDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="ItemDescrip">
+          <DataField>ItemDescrip</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestChildName">
+          <DataField>GuestChildName</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestGender">
+          <DataField>GuestGender</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestDOB">
+          <DataField>GuestDOB</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="GuestAge">
+          <DataField>GuestAge</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="RentalEQBoard">
+          <DataField>RentalEQBoard</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestHeight">
+          <DataField>GuestHeight</DataField>
+          <rd:TypeName>System.Int16</rd:TypeName>
+        </Field>
+        <Field Name="RentalEQSki">
+          <DataField>RentalEQSki</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="GuestWeight">
+          <DataField>GuestWeight</DataField>
+          <rd:TypeName>System.Int16</rd:TypeName>
+        </Field>
+        <Field Name="GuestMemo">
+          <DataField>GuestMemo</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="RentShoeSize">
+          <DataField>RentShoeSize</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="RentAdultToddler">
+          <DataField>RentAdultToddler</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="RentStance">
+          <DataField>RentStance</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="AddressCityStateZip">
+          <DataField>AddressCityStateZip</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Lunch">
+          <DataField>Lunch</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Helmet">
+          <DataField>Helmet</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Tablix Name="Tablix3">
+            <TablixBody>
+              <TablixColumns>
+                <TablixColumn>
+                  <Width>7.95881in</Width>
+                </TablixColumn>
+              </TablixColumns>
+              <TablixRows>
+                <TablixRow>
+                  <Height>10.28325in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Rectangle Name="Rectangle3">
+                          <ReportItems>
+                            <Textbox Name="Textbox1558">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Globals!ExecutionTime</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Format>M/d/yyyy h:mm tt</Format>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox1557</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>0.72222in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>1.32103in</Width>
+                              <Style>
+                                <Border />
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox3022">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>DOB:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Format>="MM/dd/yyyy "</Format>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve"> </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Format>="MM/dd/yyyy "</Format>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestDOB.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Format>="MM/dd/yyyy "</Format>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve">  </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Format>="MM/dd/yyyy "</Format>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>Gender:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve">  </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestGender.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox3021</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>1</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox44">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Ability:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox28</rd:DefaultName>
+                              <Top>0.28434in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>2</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="GuestSkiAbility2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!GuestAbility.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>GuestSkiAbility1</rd:DefaultName>
+                              <Top>0.28434in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>3</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox56">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Ski:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Snowboard:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox54</rd:DefaultName>
+                              <Top>0.70553in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>0.84765in</Width>
+                              <ZIndex>4</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="GuestBoardAbility2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!RentalEQSki.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!RentalEQBoard.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>GuestBoardAbility1</rd:DefaultName>
+                              <Top>0.70553in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>5</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox81">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Rental:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox80</rd:DefaultName>
+                              <Top>1.11117in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.84765in</Width>
+                              <ZIndex>6</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="GuestHeight2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Height: </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Sienna</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestHeight.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve">    </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>Weight:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Sienna</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve"> </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestWeight.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>GuestHeight</rd:DefaultName>
+                              <Top>1.11117in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>7</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox133">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Shoe Size:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Sienna</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox132</rd:DefaultName>
+                              <Top>1.34177in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>8</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="RentShoeSize2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!RentShoeSize.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>RentShoeSize</rd:DefaultName>
+                              <Top>1.34177in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>9</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox168">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Adt./Todd./Yth:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Sienna</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox159</rd:DefaultName>
+                              <Top>1.57641in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>10</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="RentAdultToddler2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!RentAdultToddler.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>RentAdultToddler</rd:DefaultName>
+                              <Top>1.57641in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>11</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox347">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Sienna</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox346</rd:DefaultName>
+                              <Top>1.81129in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>12</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="RentSkierType2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>RentSkierType1</rd:DefaultName>
+                              <Top>1.81129in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>13</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox164">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Lunch:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox159</rd:DefaultName>
+                              <Top>2.04189in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>14</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Lunch2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Lunch.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve"> </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Lunch1</rd:DefaultName>
+                              <Top>2.04189in</Top>
+                              <Left>2.91868in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.37646in</Width>
+                              <ZIndex>15</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox161">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Parent:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox157</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>5.29514in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.58067in</Width>
+                              <ZIndex>16</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="ResParentName2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!ResParentName.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>ResParentName</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>5.87581in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.03464in</Width>
+                              <ZIndex>17</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox187">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Address:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox157</rd:DefaultName>
+                              <Top>0.28434in</Top>
+                              <Left>5.29514in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>0.58067in</Width>
+                              <ZIndex>18</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="AddressCityStateZip2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!AddressCityStateZip.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>AddressCityStateZip</rd:DefaultName>
+                              <Top>0.28434in</Top>
+                              <Left>5.87581in</Left>
+                              <Height>0.39175in</Height>
+                              <Width>2.03464in</Width>
+                              <ZIndex>19</ZIndex>
+                              <Style>
+                                <Border />
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox45">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Phone:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox30</rd:DefaultName>
+                              <Top>0.70553in</Top>
+                              <Left>5.29514in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.58067in</Width>
+                              <ZIndex>20</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox46">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!ResPhoneNumber.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox31</rd:DefaultName>
+                              <Top>0.70553in</Top>
+                              <Left>5.87581in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.03464in</Width>
+                              <ZIndex>21</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox83">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Notes:  </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestMemo.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox82</rd:DefaultName>
+                              <Top>0.93612in</Top>
+                              <Left>5.29514in</Left>
+                              <Height>0.84311in</Height>
+                              <Width>2.61531in</Width>
+                              <ZIndex>22</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="TranStartDate2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!TranStartDate.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>TranStartDate</rd:DefaultName>
+                              <Top>0.28434in</Top>
+                              <Left>0.01736in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.02589in</Width>
+                              <ZIndex>23</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="GuestChildName2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!GuestChildName.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>GuestChildName</rd:DefaultName>
+                              <Top>0.70553in</Top>
+                              <Left>0.01736in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.02589in</Width>
+                              <ZIndex>24</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="ItemDescrip2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!ItemDescrip.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>ItemDescrip1</rd:DefaultName>
+                              <Top>1.11117in</Top>
+                              <Left>0.01736in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.02589in</Width>
+                              <ZIndex>25</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox159">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Total Fees</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox158</rd:DefaultName>
+                              <Top>1.8113in</Top>
+                              <Left>0.01736in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>2.02589in</Width>
+                              <ZIndex>26</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="TranExt2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!TranExt.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>TranExt</rd:DefaultName>
+                              <Top>2.04189in</Top>
+                              <Height>0.20282in</Height>
+                              <Width>2.02589in</Width>
+                              <ZIndex>27</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox12">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Status:</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox11</rd:DefaultName>
+                              <Top>1.80701in</Top>
+                              <Left>5.29514in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.69097in</Width>
+                              <ZIndex>28</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox15">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!TranRecordStatus.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox14</rd:DefaultName>
+                              <Top>1.80701in</Top>
+                              <Left>6in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>1.91045in</Width>
+                              <ZIndex>29</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox172">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Report Date: </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox172</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>0.01736in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.69097in</Width>
+                              <ZIndex>30</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox162">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Age:  </Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>=Fields!GuestAge.Value</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox157</rd:DefaultName>
+                              <Top>0.05208in</Top>
+                              <Left>2.05714in</Left>
+                              <Height>0.20282in</Height>
+                              <Width>0.86154in</Width>
+                              <ZIndex>31</ZIndex>
+                              <Style>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="ChildCareRelease">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>CLC Programs Liability RELEASE Agreement</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Center</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value> Please read carefully before signing.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Center</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  1.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve">   </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontFamily>Times New Roman</FontFamily>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>I agree on behalf of myself and/or the minor user I am representing, to accept for use</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve"> </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>AS IS</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value> all equipment to be provided and to accept full financial responsibility for the care of the equipment while it is in the user’s possession.  I will be responsible for replacement at full value, any equipment not returned by the agreed date and time.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  2.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve">   </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontFamily>Times New Roman</FontFamily>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>I or the minor I am representing will not use any equipment provided until instruction has been received and its use and function are fully understood.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  3.   </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>I understand that the ski/boot/binding system cannot guarantee the user's safety.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>  In downhill skiing, the binding system will not release at all times or under all circumstances where release may prevent injury or death, nor is it possible to predict every situation in which it will release.  In snowboarding, skiboarding, snowshoeing and other sports utilizing equipment with non-releasable bindings, the binding system will not ordinarily release during use; these bindings are not designed to release as a result of forces generated during normal operation.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  4.   </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>I understand and agree that the sports of skiing, snowboarding, skiboarding, snowshoeing, cross-country skiing and other sports (collectively “RECREATIONAL SNOW SPORTS”), including the use of lifts, involve inherent and other risks that could lead to permanent catastrophic injury or death.  I voluntarily agree to expressly assume for myself and/or the minor I am representing all of the risks involved.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  5.   </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>I AGREE NOT TO SUE AND TO RELEASE</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>Underline</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>, Ski Liberty Operating Corp., Ski Roundtop Operating Corp.,  Whitetail Mountain Operating Corp., Snow Time, Inc., Peak Resorts, Inc., and Vail Holdings, Inc. including their agents and employees, as well as the equipment manufacturers and distributors and their successors in interest (collectively “PROVIDERS”), from all liability for injury, death, property loss or damage, that in any way results from the use of facilities or participation in RECREATIONAL SNOW SPORTS for which this equipment is provided, or is in any way related to the use of the equipment, including liability that results from the </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>NEGLIGENCE</Value>
+                                      <Style>
+                                        <FontStyle>Italic</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value> OF PROVIDERS or any other person or cause.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  6.   I further agree to hold harmless, indemnify and defend the collective PROVIDERS for any loss or damage, including any that results from claims or lawsuits for personal injury, death, and property loss and damage in any way related to my or the minor’s use of facilities or use of the equipment provided, REGARDLESS OF ANY </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>NEGLIGENCE</Value>
+                                      <Style>
+                                        <FontStyle>Italic</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value xml:space="preserve"> </Value>
+                                      <Style>
+                                        <FontStyle>Italic</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                    <TextRun>
+                                      <Value>on the part of the same.    </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  7.   I understand that a helmet designed for recreational snow sports use will help reduce the risk of some types of injuries to the user at slower speeds.  I recognize that serious injury or death can result from both low-energy and high-energy impacts, even when a helmet is worn.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  8.   I agree to release the collective PROVIDERS, from any and all liability, for damage and injury to myself, the minor child or any person or property that occurs while I am taking a Ski School/CLC lesson, regardless of any negligence on the part of the same.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>  9.   I agree on behalf of myself or the minor child I am representing to report all injuries to the Ski Patrol before leaving the area.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>10.   All participants are responsible for their own equipment and personal belongings.  The Ski Area is not responsible for any lost or stolen items.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>11.   I grant permission for the Ski Area to use my photograph, videotape, motion picture recording or any other record of my use of its facilities for legitimate business purposes.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>12.   I agree that all disputes arising under this contract, either for the use of rental equipment as described on the rental form, or for the use of the facilities, shall be litigated exclusively in the Court of Common Pleas of the County where the incident took place or in the United States District Court for the Middle District of Pennsylvania.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>13.   This agreement is governed by the applicable laws of the Commonwealth of Pennsylvania.  If any part of this agreement is determined to be unenforceable, all other parts shall be given full force and effect.                                                                                                           </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <HangingIndent>-0.25in</HangingIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>         I HAVE READ AND UNDERSTAND THIS RENTAL AND LIABILITY RELEASE AGREEMENT AND AGREE TO BE LEGALLY BOUND HERETO.  </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <LeftIndent>0.25in</LeftIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>         Users Signature:  ____________________________________________________________  Date _______________
+         If a minor, the signature of a parent or guardian is required.  Parent/Guardian:  I verify that I am the parent or guardian of the minor, and I have the</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>         authority to enter into this agreement on behalf of the participant/equipment user and I agree to be bound by the terms and conditions of this</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>         agreement.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>         Parent/Guardian’s Signature:  __________________________________________________  Date _______________                                                 </Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>                                                         The signature of one parent or guardian binds both parents in reference to this agreement.</Value>
+                                      <Style>
+                                        <FontStyle>Normal</FontStyle>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Normal</FontWeight>
+                                        <TextDecoration>None</TextDecoration>
+                                        <Color>#000000</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <LeftIndent>0.25in</LeftIndent>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <Top>2.24471in</Top>
+                              <Height>6.55572in</Height>
+                              <Width>7.91045in</Width>
+                              <ZIndex>32</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox55">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Helmet Opt-Out:</Value>
+                                      <Style>
+                                        <FontSize>7pt</FontSize>
+                                        <Color>Blue</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox55</rd:DefaultName>
+                              <Top>2.0515in</Top>
+                              <Left>5.28638in</Left>
+                              <Height>0.18749in</Height>
+                              <Width>0.84765in</Width>
+                              <ZIndex>33</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Rectangle Name="Rectangle8">
+                              <KeepTogether>true</KeepTogether>
+                              <Top>2.08754in</Top>
+                              <Left>6.20347in</Left>
+                              <Height>0.12367in</Height>
+                              <Width>0.13148in</Width>
+                              <ZIndex>34</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                              </Style>
+                            </Rectangle>
+                            <Line Name="Line1">
+                              <Top>2.26677in</Top>
+                              <Left>6.39695in</Left>
+                              <Height>0in</Height>
+                              <Width>0.65079in</Width>
+                              <ZIndex>35</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                              </Style>
+                            </Line>
+                            <Rectangle Name="Rectangle1">
+                              <ReportItems>
+                                <Textbox Name="Textbox1">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Check your skier Type: (Please refer to Complete descriptions)</Value>
+                                          <Style>
+                                            <FontSize>8pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style>
+                                        <TextAlign>Center</TextAlign>
+                                      </Style>
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox1</rd:DefaultName>
+                                  <Top>0.00528in</Top>
+                                  <Left>0.00603in</Left>
+                                  <Height>0.19306in</Height>
+                                  <Width>5.3389in</Width>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                              </ReportItems>
+                              <KeepTogether>true</KeepTogether>
+                              <Top>8.75807in</Top>
+                              <Left>1.31205in</Left>
+                              <Height>0.20361in</Height>
+                              <Width>5.35095in</Width>
+                              <ZIndex>36</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                                <BottomBorder>
+                                  <Style>None</Style>
+                                </BottomBorder>
+                              </Style>
+                            </Rectangle>
+                            <Rectangle Name="Rectangle2">
+                              <ReportItems>
+                                <Line Name="Line2">
+                                  <Top>0.00527in</Top>
+                                  <Left>1.88796in</Left>
+                                  <Height>0.2in</Height>
+                                  <Width>0in</Width>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line3">
+                                  <Top>0.00527in</Top>
+                                  <Left>3.77637in</Left>
+                                  <Height>0.2in</Height>
+                                  <Width>0in</Width>
+                                  <ZIndex>1</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Textbox Name="Textbox3">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Type I</Value>
+                                          <Style>
+                                            <FontSize>7pt</FontSize>
+                                            <FontWeight>Bold</FontWeight>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox2</rd:DefaultName>
+                                  <Top>0.00527in</Top>
+                                  <Left>0.24653in</Left>
+                                  <Height>0.15832in</Height>
+                                  <Width>1in</Width>
+                                  <ZIndex>2</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox4">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Type II</Value>
+                                          <Style>
+                                            <FontSize>7pt</FontSize>
+                                            <FontWeight>Bold</FontWeight>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox2</rd:DefaultName>
+                                  <Top>0.00527in</Top>
+                                  <Left>2.14838in</Left>
+                                  <Height>0.15832in</Height>
+                                  <Width>1in</Width>
+                                  <ZIndex>3</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox5">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Type III</Value>
+                                          <Style>
+                                            <FontSize>7pt</FontSize>
+                                            <FontWeight>Bold</FontWeight>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox2</rd:DefaultName>
+                                  <Top>0.00527in</Top>
+                                  <Left>4.0229in</Left>
+                                  <Height>0.15832in</Height>
+                                  <Width>1in</Width>
+                                  <ZIndex>4</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Rectangle Name="Rectangle10">
+                                  <ReportItems>
+                                    <Rectangle Name="Rectangle12">
+                                      <KeepTogether>true</KeepTogether>
+                                      <Height>0.13054in</Height>
+                                      <Width>0.13832in</Width>
+                                      <Style>
+                                        <Border>
+                                          <Style>Solid</Style>
+                                        </Border>
+                                      </Style>
+                                    </Rectangle>
+                                  </ReportItems>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Top>0.00528in</Top>
+                                  <Left>1.94062in</Left>
+                                  <Height>0.13054in</Height>
+                                  <Width>0.13832in</Width>
+                                  <ZIndex>5</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Rectangle>
+                                <Rectangle Name="Rectangle11">
+                                  <KeepTogether>true</KeepTogether>
+                                  <Top>0.00193in</Top>
+                                  <Left>0.03877in</Left>
+                                  <Height>0.13054in</Height>
+                                  <Width>0.13832in</Width>
+                                  <ZIndex>6</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Rectangle>
+                                <Rectangle Name="Rectangle13">
+                                  <KeepTogether>true</KeepTogether>
+                                  <Left>3.83193in</Left>
+                                  <Height>0.13054in</Height>
+                                  <Width>0.13832in</Width>
+                                  <ZIndex>7</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Rectangle>
+                              </ReportItems>
+                              <KeepTogether>true</KeepTogether>
+                              <Top>8.95641in</Top>
+                              <Left>1.31205in</Left>
+                              <Height>0.20527in</Height>
+                              <Width>5.35094in</Width>
+                              <ZIndex>37</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                              </Style>
+                            </Rectangle>
+                            <Rectangle Name="Rectangle9">
+                              <ReportItems>
+                                <Line Name="Line5">
+                                  <Top>0.22598in</Top>
+                                  <Height>0in</Height>
+                                  <Width>6.94491in</Width>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line6">
+                                  <Top>0.43111in</Top>
+                                  <Left>0.00001in</Left>
+                                  <Height>0in</Height>
+                                  <Width>6.9449in</Width>
+                                  <ZIndex>1</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line7">
+                                  <Left>1.40337in</Left>
+                                  <Height>0.8304in</Height>
+                                  <Width>0in</Width>
+                                  <ZIndex>2</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line8">
+                                  <Top>0.02431in</Top>
+                                  <Left>2.89444in</Left>
+                                  <Height>0.80609in</Height>
+                                  <Width>0in</Width>
+                                  <ZIndex>3</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line9">
+                                  <Top>0.02431in</Top>
+                                  <Left>4.48645in</Left>
+                                  <Height>0.80609in</Height>
+                                  <Width>0in</Width>
+                                  <ZIndex>4</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line10">
+                                  <Top>0.02431in</Top>
+                                  <Left>5.73518in</Left>
+                                  <Height>0.60847in</Height>
+                                  <Width>0in</Width>
+                                  <ZIndex>5</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Textbox Name="Textbox29">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>BOOT #</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.02431in</Top>
+                                  <Left>1.43115in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>0.60718in</Width>
+                                  <ZIndex>6</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox32">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>BOOT SOLE LENGTH</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.02431in</Top>
+                                  <Left>2.90833in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>7</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox33">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>LT</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.22944in</Top>
+                                  <Left>2.90833in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>8</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox34">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>SYNCHRO #</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.02431in</Top>
+                                  <Left>4.51423in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.02651in</Width>
+                                  <ZIndex>9</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox37">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>TECH INITIALS</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.02431in</Top>
+                                  <Left>5.76296in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.02651in</Width>
+                                  <ZIndex>10</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox38">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>CODE</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.22944in</Top>
+                                  <Left>5.76296in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>11</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox39">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>RT</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.445in</Top>
+                                  <Left>2.90833in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>12</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox40">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>LH</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.22944in</Top>
+                                  <Left>4.51423in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>13</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox41">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>RH</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.445in</Top>
+                                  <Left>4.51423in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>14</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox42">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>TECH INITIALS</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.445in</Top>
+                                  <Left>5.76296in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.05429in</Width>
+                                  <ZIndex>15</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Line Name="Line12">
+                                  <Top>0.61806in</Top>
+                                  <Height>0in</Height>
+                                  <Width>6.94491in</Width>
+                                  <ZIndex>16</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>Solid</Style>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Textbox Name="Textbox21">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Helmet Size</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.63195in</Top>
+                                  <Left>1.43115in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.35853in</Width>
+                                  <ZIndex>17</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox22">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Tech Initials</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.63195in</Top>
+                                  <Left>2.90833in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.47222in</Width>
+                                  <ZIndex>18</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox35">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>SKI/SNBD #</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.22944in</Top>
+                                  <Left>1.43115in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>0.60718in</Width>
+                                  <ZIndex>19</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox36">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>POLES TECH INIT</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.445in</Top>
+                                  <Left>1.43115in</Left>
+                                  <Height>0.14528in</Height>
+                                  <Width>0.89885in</Width>
+                                  <ZIndex>20</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox20">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>Helmet No.</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.63195in</Top>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.2368in</Width>
+                                  <ZIndex>21</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox19">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>STANCE REGULAR or GOOFY</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.445in</Top>
+                                  <Height>0.14528in</Height>
+                                  <Width>1.2368in</Width>
+                                  <ZIndex>22</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox18">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>SIZE</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.22944in</Top>
+                                  <Height>0.14528in</Height>
+                                  <Width>0.60718in</Width>
+                                  <ZIndex>23</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                                <Textbox Name="Textbox17">
+                                  <CanGrow>true</CanGrow>
+                                  <KeepTogether>true</KeepTogether>
+                                  <Paragraphs>
+                                    <Paragraph>
+                                      <TextRuns>
+                                        <TextRun>
+                                          <Value>BOOT SIZE</Value>
+                                          <Style>
+                                            <FontSize>6pt</FontSize>
+                                          </Style>
+                                        </TextRun>
+                                      </TextRuns>
+                                      <Style />
+                                    </Paragraph>
+                                  </Paragraphs>
+                                  <rd:DefaultName>Textbox17</rd:DefaultName>
+                                  <Top>0.02431in</Top>
+                                  <Height>0.14528in</Height>
+                                  <Width>0.60718in</Width>
+                                  <ZIndex>24</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Style>None</Style>
+                                    </Border>
+                                    <PaddingLeft>2pt</PaddingLeft>
+                                    <PaddingRight>2pt</PaddingRight>
+                                    <PaddingTop>2pt</PaddingTop>
+                                    <PaddingBottom>2pt</PaddingBottom>
+                                  </Style>
+                                </Textbox>
+                              </ReportItems>
+                              <KeepTogether>true</KeepTogether>
+                              <Top>9.39459in</Top>
+                              <Left>0.47982in</Left>
+                              <Height>0.8304in</Height>
+                              <Width>6.94491in</Width>
+                              <ZIndex>38</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                              </Style>
+                            </Rectangle>
+                            <Line Name="Line11">
+                              <Top>9.17029in</Top>
+                              <Left>0.03981in</Left>
+                              <Height>0in</Height>
+                              <Width>7.91045in</Width>
+                              <ZIndex>39</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>Solid</Style>
+                                </Border>
+                              </Style>
+                            </Line>
+                            <Textbox Name="Textbox43">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>The signature of one parent/guardian binds both parents/guardians for any claim they may have</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Center</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
+                              <Top>9.17029in</Top>
+                              <Left>0.03981in</Left>
+                              <Height>0.19305in</Height>
+                              <Width>7.91045in</Width>
+                              <ZIndex>40</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                            <Textbox Name="Textbox2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>v1.2</Value>
+                                      <Style>
+                                        <FontSize>8pt</FontSize>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
+                              <Top>2.08754in</Top>
+                              <Left>7.55628in</Left>
+                              <Height>0.17923in</Height>
+                              <Width>0.35417in</Width>
+                              <ZIndex>41</ZIndex>
+                              <Style>
+                                <Border>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </ReportItems>
+                          <PageBreak>
+                            <BreakLocation>End</BreakLocation>
+                          </PageBreak>
+                          <KeepTogether>true</KeepTogether>
+                          <ZIndex>1</ZIndex>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </Rectangle>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+              </TablixRows>
+            </TablixBody>
+            <TablixColumnHierarchy>
+              <TablixMembers>
+                <TablixMember />
+              </TablixMembers>
+            </TablixColumnHierarchy>
+            <TablixRowHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <Group Name="Details" />
+                </TablixMember>
+              </TablixMembers>
+            </TablixRowHierarchy>
+            <DataSetName>SLCLCReservationDS</DataSetName>
+            <PageBreak>
+              <BreakLocation>Start</BreakLocation>
+            </PageBreak>
+            <Height>10.28325in</Height>
+            <Width>7.95881in</Width>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Tablix>
+        </ReportItems>
+        <Height>10.28325in</Height>
+        <Style />
+      </Body>
+      <Width>7.95881in</Width>
+      <Page>
+        <PageHeight>27.94cm</PageHeight>
+        <PageWidth>21.59cm</PageWidth>
+        <LeftMargin>0.635cm</LeftMargin>
+        <RightMargin>0.635cm</RightMargin>
+        <TopMargin>0.635cm</TopMargin>
+        <BottomMargin>0.635cm</BottomMargin>
+        <Style />
+      </Page>
+    </ReportSection>
+  </ReportSections>
+  <ReportParameters>
+    <ReportParameter Name="resort">
+      <DataType>String</DataType>
+      <Prompt>Resort</Prompt>
+      <ValidValues>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>LM</Value>
+            <Label>Liberty</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>RT</Value>
+            <Label>Roundtop</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>WT</Value>
+            <Label>Whitetail</Label>
+          </ParameterValue>
+        </ParameterValues>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="startDate">
+      <DataType>DateTime</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=Today()</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="endDate">
+      <DataType>DateTime</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=Today()</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>End Date</Prompt>
+    </ReportParameter>
+  </ReportParameters>
+  <ReportParametersLayout>
+    <GridLayoutDefinition>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
+      <CellDefinitions>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>startDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>endDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>resort</ParameterName>
+        </CellDefinition>
+      </CellDefinitions>
+    </GridLayoutDefinition>
+  </ReportParametersLayout>
+  <EmbeddedImages>
+    <EmbeddedImage Name="SLlogo">
+      <MIMEType>image/jpeg</MIMEType>
+      <ImageData>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</ImageData>
+    </EmbeddedImage>
+  </EmbeddedImages>
+  <Language>en-US</Language>
+  <ConsumeContainerWhitespace>true</ConsumeContainerWhitespace>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType>
+  <rd:ReportServerUrl>http://pk-sql01/reportserver</rd:ReportServerUrl>
+  <rd:ReportID>6d50a61c-f1ff-4ec0-9207-a241497a589f</rd:ReportID>
+</Report>
