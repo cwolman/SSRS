@@ -241,7 +241,7 @@ order by descrip</CommandText>
               <TablixMembers>
                 <TablixMember>
                   <TablixHeader>
-                    <Size>1in</Size>
+                    <Size>0.88095in</Size>
                     <CellContents>
                       <Textbox Name="Textbox15">
                         <CanGrow>true</CanGrow>
@@ -285,7 +285,7 @@ order by descrip</CommandText>
                   <TablixMembers>
                     <TablixMember>
                       <TablixHeader>
-                        <Size>2.29167in</Size>
+                        <Size>2.28721in</Size>
                         <CellContents>
                           <Textbox Name="Textbox9">
                             <CanGrow>true</CanGrow>
@@ -329,7 +329,7 @@ order by descrip</CommandText>
                       <TablixMembers>
                         <TablixMember>
                           <TablixHeader>
-                            <Size>1in</Size>
+                            <Size>0.99554in</Size>
                             <CellContents>
                               <Textbox Name="Textbox7">
                                 <CanGrow>true</CanGrow>
@@ -373,7 +373,7 @@ order by descrip</CommandText>
                           <TablixMembers>
                             <TablixMember>
                               <TablixHeader>
-                                <Size>1.09375in</Size>
+                                <Size>0.92262in</Size>
                                 <CellContents>
                                   <Textbox Name="Textbox5">
                                     <CanGrow>true</CanGrow>
@@ -417,7 +417,7 @@ order by descrip</CommandText>
                               <TablixMembers>
                                 <TablixMember>
                                   <TablixHeader>
-                                    <Size>2.51042in</Size>
+                                    <Size>2.36012in</Size>
                                     <CellContents>
                                       <Textbox Name="Textbox3">
                                         <CanGrow>true</CanGrow>
@@ -459,7 +459,53 @@ order by descrip</CommandText>
                                     </CellContents>
                                   </TablixHeader>
                                   <TablixMembers>
-                                    <TablixMember />
+                                    <TablixMember>
+                                      <TablixHeader>
+                                        <Size>2.88839in</Size>
+                                        <CellContents>
+                                          <Textbox Name="Textbox8">
+                                            <CanGrow>true</CanGrow>
+                                            <KeepTogether>true</KeepTogether>
+                                            <Paragraphs>
+                                              <Paragraph>
+                                                <TextRuns>
+                                                  <TextRun>
+                                                    <Value>email</Value>
+                                                    <Style>
+                                                      <FontSize>11pt</FontSize>
+                                                      <FontWeight>Bold</FontWeight>
+                                                      <Color>#666666</Color>
+                                                    </Style>
+                                                  </TextRun>
+                                                </TextRuns>
+                                                <Style>
+                                                  <TextAlign>Left</TextAlign>
+                                                </Style>
+                                              </Paragraph>
+                                            </Paragraphs>
+                                            <rd:DefaultName>Textbox3</rd:DefaultName>
+                                            <Style>
+                                              <Border>
+                                                <Style>None</Style>
+                                              </Border>
+                                              <BottomBorder>
+                                                <Color>LightGrey</Color>
+                                                <Style>Solid</Style>
+                                                <Width>1pt</Width>
+                                              </BottomBorder>
+                                              <BackgroundColor>White</BackgroundColor>
+                                              <PaddingLeft>2pt</PaddingLeft>
+                                              <PaddingRight>2pt</PaddingRight>
+                                              <PaddingTop>2pt</PaddingTop>
+                                              <PaddingBottom>2pt</PaddingBottom>
+                                            </Style>
+                                          </Textbox>
+                                        </CellContents>
+                                      </TablixHeader>
+                                      <TablixMembers>
+                                        <TablixMember />
+                                      </TablixMembers>
+                                    </TablixMember>
                                   </TablixMembers>
                                 </TablixMember>
                               </TablixMembers>
@@ -482,7 +528,7 @@ order by descrip</CommandText>
                     </SortExpression>
                   </SortExpressions>
                   <TablixHeader>
-                    <Size>1in</Size>
+                    <Size>0.88095in</Size>
                     <CellContents>
                       <Textbox Name="sale_date">
                         <CanGrow>true</CanGrow>
@@ -536,7 +582,7 @@ order by descrip</CommandText>
                         </SortExpression>
                       </SortExpressions>
                       <TablixHeader>
-                        <Size>2.29167in</Size>
+                        <Size>2.28721in</Size>
                         <CellContents>
                           <Textbox Name="item1">
                             <CanGrow>true</CanGrow>
@@ -589,7 +635,7 @@ order by descrip</CommandText>
                             </SortExpression>
                           </SortExpressions>
                           <TablixHeader>
-                            <Size>1in</Size>
+                            <Size>0.99554in</Size>
                             <CellContents>
                               <Textbox Name="pass_no">
                                 <CanGrow>true</CanGrow>
@@ -642,7 +688,7 @@ order by descrip</CommandText>
                                 </SortExpression>
                               </SortExpressions>
                               <TablixHeader>
-                                <Size>1.09375in</Size>
+                                <Size>0.92262in</Size>
                                 <CellContents>
                                   <Textbox Name="pass_modifier">
                                     <CanGrow>true</CanGrow>
@@ -695,7 +741,7 @@ order by descrip</CommandText>
                                     </SortExpression>
                                   </SortExpressions>
                                   <TablixHeader>
-                                    <Size>2.51042in</Size>
+                                    <Size>2.36012in</Size>
                                     <CellContents>
                                       <Textbox Name="passholder">
                                         <CanGrow>true</CanGrow>
@@ -705,7 +751,7 @@ order by descrip</CommandText>
                                           <Paragraph>
                                             <TextRuns>
                                               <TextRun>
-                                                <Value>=Fields!passholder.Value &amp; " " &amp; Fields!e_mail.Value</Value>
+                                                <Value>=Fields!passholder.Value</Value>
                                                 <Style>
                                                   <FontWeight>Normal</FontWeight>
                                                   <Color>#333333</Color>
@@ -737,7 +783,52 @@ order by descrip</CommandText>
                                     </CellContents>
                                   </TablixHeader>
                                   <TablixMembers>
-                                    <TablixMember />
+                                    <TablixMember>
+                                      <TablixHeader>
+                                        <Size>2.88839in</Size>
+                                        <CellContents>
+                                          <Textbox Name="e_mail">
+                                            <CanGrow>true</CanGrow>
+                                            <KeepTogether>true</KeepTogether>
+                                            <Paragraphs>
+                                              <Paragraph>
+                                                <TextRuns>
+                                                  <TextRun>
+                                                    <Value>=Fields!e_mail.Value</Value>
+                                                    <Style>
+                                                      <FontWeight>Normal</FontWeight>
+                                                      <Color>#333333</Color>
+                                                    </Style>
+                                                  </TextRun>
+                                                </TextRuns>
+                                                <Style>
+                                                  <TextAlign>Left</TextAlign>
+                                                </Style>
+                                              </Paragraph>
+                                            </Paragraphs>
+                                            <rd:DefaultName>e_mail</rd:DefaultName>
+                                            <Style>
+                                              <Border>
+                                                <Style>None</Style>
+                                              </Border>
+                                              <BottomBorder>
+                                                <Color>LightGrey</Color>
+                                                <Style>Solid</Style>
+                                                <Width>1pt</Width>
+                                              </BottomBorder>
+                                              <BackgroundColor>White</BackgroundColor>
+                                              <PaddingLeft>2pt</PaddingLeft>
+                                              <PaddingRight>2pt</PaddingRight>
+                                              <PaddingTop>2pt</PaddingTop>
+                                              <PaddingBottom>2pt</PaddingBottom>
+                                            </Style>
+                                          </Textbox>
+                                        </CellContents>
+                                      </TablixHeader>
+                                      <TablixMembers>
+                                        <TablixMember />
+                                      </TablixMembers>
+                                    </TablixMember>
                                   </TablixMembers>
                                 </TablixMember>
                               </TablixMembers>
@@ -753,7 +844,7 @@ order by descrip</CommandText>
             <DataSetName>getData</DataSetName>
             <Top>1.0625in</Top>
             <Height>0.5in</Height>
-            <Width>7.92709in</Width>
+            <Width>10.36607in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -818,7 +909,7 @@ order by descrip</CommandText>
             <rd:DefaultName>Textbox3</rd:DefaultName>
             <Top>0.5in</Top>
             <Height>0.44792in</Height>
-            <Width>7.5in</Width>
+            <Width>10.36607in</Width>
             <ZIndex>2</ZIndex>
             <Style>
               <Border>
@@ -831,14 +922,14 @@ order by descrip</CommandText>
             </Style>
           </Textbox>
         </ReportItems>
-        <Height>2.23958in</Height>
+        <Height>1.5625in</Height>
         <Style>
           <Border>
             <Style>None</Style>
           </Border>
         </Style>
       </Body>
-      <Width>7.92709in</Width>
+      <Width>10.36607in</Width>
       <Page>
         <PageFooter>
           <Height>0.45in</Height>
@@ -884,7 +975,7 @@ order by descrip</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  Roundtop Mountain Explorers ●  v1.1</Value>
+                      <Value>Peak Resorts  ●  Roundtop Mountain Explorers ●  v1.2</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -899,7 +990,7 @@ order by descrip</CommandText>
               <Top>0.1in</Top>
               <Left>1.69792in</Left>
               <Height>0.25in</Height>
-              <Width>4.88543in</Width>
+              <Width>7.12648in</Width>
               <ZIndex>1</ZIndex>
               <DataElementOutput>NoOutput</DataElementOutput>
               <Style>
@@ -930,9 +1021,9 @@ order by descrip</CommandText>
               </Paragraphs>
               <rd:DefaultName>textbox8</rd:DefaultName>
               <Top>0.1in</Top>
-              <Left>6.58334in</Left>
+              <Left>8.86607in</Left>
               <Height>0.25in</Height>
-              <Width>1.34375in</Width>
+              <Width>1.48958in</Width>
               <ZIndex>2</ZIndex>
               <DataElementOutput>NoOutput</DataElementOutput>
               <Style>
@@ -950,6 +1041,8 @@ order by descrip</CommandText>
             </Border>
           </Style>
         </PageFooter>
+        <PageHeight>8.5in</PageHeight>
+        <PageWidth>11in</PageWidth>
         <LeftMargin>0.25in</LeftMargin>
         <RightMargin>0.25in</RightMargin>
         <TopMargin>0.25in</TopMargin>
