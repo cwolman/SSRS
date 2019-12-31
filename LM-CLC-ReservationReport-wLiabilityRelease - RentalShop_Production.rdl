@@ -12,10 +12,18 @@
     <DataSet Name="SLCLCReservationDS">
       <Query>
         <DataSourceName>RESERVATIONLIAB</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@endDate">
+            <Value>=Parameters!endDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@startDate">
+            <Value>=Parameters!startDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>-- liberty clc --
 set transaction isolation level read uncommitted
-declare @startDate date='2019-12-23'
-declare @endDate datetime='2019-12-23'
+-- declare @startDate datetime='2019-12-30'
+-- declare @endDate datetime='2019-12-30 23:59:59'
 
 select s.start_time as TranStartDate
 	, num_addit
@@ -58,14 +66,14 @@ select s.start_time as TranStartDate
 	--, s.temp_name
 	--, s.date_time
 	--, tr.sale_no
-	, g.memo_1 as GuestMemo
+	, concat(g.memo_1,case when g.text_1 is not null then ' Allergies:' else '' end,g.text_1) as GuestMemo
 	--, g.memo_2
 	--, g.memo_3
 	--, g.text_1
 	--, g.text_2
 	--, g.text_3
 	--, g.text_4
-	, g.text_5 as GuestAbility
+	, i.descrip as GuestAbility
 	--, g.text_6
 	--, g.text_7
 	--, g.text_8
@@ -124,6 +132,9 @@ left join dbo.transact tr on s.trans_no=tr.trans_no
 left join dbo.tr_save trs on s.trans_no=trs.trans_no
 left join dbo.resrvatn r on trs.reserv_no=r.reserv_no
 left join dbo.b_pods p on s.resource1 = p.pod_id
+left join dbo.items i on trs.department=i.department
+				     and trs.category=i.category
+					 and trs.item=i.item
 LEFT OUTER JOIN dbo.address ad ON ad.address_id IN 
 	(SELECT az.address_id 
 		FROM dbo.address az 
@@ -149,8 +160,8 @@ LEFT OUTER JOIN dbo.address ar ON ar.address_id IN
 	                           WHERE alp.guest_no=r.guest_no)
 	                AND aq.addr_type IN (0,1))
 where s.is_pod=1 
-	and s.start_time&lt;@endDate + ' 23:59:59' 
-	and s.end_time&gt;@startDate 
+	and s.start_time&gt;=@startDate
+	and s.end_time&lt;=@endDate 
 	and t.descrip like 'LM%'
 order by 2,3,4,5,6</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
@@ -3001,7 +3012,7 @@ order by 2,3,4,5,6</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value EvaluationMode="Constant">v1.0</Value>
+                                      <Value EvaluationMode="Constant">v1.1</Value>
                                       <Style>
                                         <FontSize>8pt</FontSize>
                                       </Style>
@@ -3089,7 +3100,7 @@ order by 2,3,4,5,6</CommandText>
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>=Today()</Value>
+          <Value>=CDate(Format(DateAdd("d",-7,Now()), "yyyy-MM-dd") + " 00:00:00")</Value>
         </Values>
       </DefaultValue>
       <Prompt>Start Date</Prompt>
@@ -3098,7 +3109,7 @@ order by 2,3,4,5,6</CommandText>
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>=Today()</Value>
+          <Value>=CDate(Format(DateAdd("d",-7,Now()), "yyyy-MM-dd") + " 23:59:59")</Value>
         </Values>
       </DefaultValue>
       <Prompt>End Date</Prompt>
