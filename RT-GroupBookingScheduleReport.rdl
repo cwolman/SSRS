@@ -2159,7 +2159,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.7</Value>
+                      <Value>Peak Resorts  ●  RT Group Booking Schedule Report  ●  v1.8</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -2239,7 +2239,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>=DateAdd("d",1,Today())</Value>
+          <Value>=Today()</Value>
         </Values>
       </DefaultValue>
       <Prompt>Start Date</Prompt>
@@ -2248,7 +2248,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>=DateAdd("d",2,Today())</Value>
+          <Value>=DateAdd("d",5,Today())</Value>
         </Values>
       </DefaultValue>
       <Prompt>End Date</Prompt>
