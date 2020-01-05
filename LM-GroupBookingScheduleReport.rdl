@@ -45,7 +45,7 @@ select rs.reserv_no as ResNo
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc=15 then rs.descrip2 
+		when rs.pickup_loc in(15,20) then rs.descrip2 
 		else 0
 	  end as Tubing 
 	, case 
@@ -89,7 +89,7 @@ select rs.reserv_no as ResNo
 		else 0
 	  end as Ski
 	, case 
-		when rs.pickup_loc=15 then rs.descrip2 
+		when rs.pickup_loc in(15,20) then rs.descrip2 
 		else 0
 	  end as Tubing 
 	, case 
@@ -1883,7 +1883,6 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>textbox6</rd:DefaultName>
-              <Top>0in</Top>
               <Left>0.00721in</Left>
               <Height>0.25in</Height>
               <Width>1.5in</Width>
@@ -1903,7 +1902,7 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>Peak Resorts  ●  LM Group Booking Schedule Report  ●  v1.0</Value>
+                      <Value>Peak Resorts  ●  LM Group Booking Schedule Report  ●  v1.1</Value>
                       <Style>
                         <FontSize>7pt</FontSize>
                       </Style>
@@ -1915,7 +1914,6 @@ where (NumOfBusses&lt;&gt;0 or NumberOfGuests&lt;&gt;0)
                 </Paragraph>
               </Paragraphs>
               <rd:DefaultName>textbox7</rd:DefaultName>
-              <Top>0in</Top>
               <Left>1.50721in</Left>
               <Height>0.25in</Height>
               <Width>5.97891in</Width>
