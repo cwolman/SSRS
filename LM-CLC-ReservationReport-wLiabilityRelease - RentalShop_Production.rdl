@@ -160,6 +160,7 @@ LEFT OUTER JOIN dbo.address ar ON ar.address_id IN
 	                           WHERE alp.guest_no=r.guest_no)
 	                AND aq.addr_type IN (0,1))
 where s.is_pod=1 
+	and not g.guest_no is null
 	and s.start_time&gt;=@startDate
 	and s.end_time&lt;=@endDate 
 	and t.descrip like 'LM%'
@@ -3012,7 +3013,7 @@ order by 2,3,4,5,6</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value EvaluationMode="Constant">v1.1</Value>
+                                      <Value>v1.2</Value>
                                       <Style>
                                         <FontSize>8pt</FontSize>
                                       </Style>
