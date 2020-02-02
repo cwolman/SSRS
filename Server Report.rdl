@@ -2,8 +2,8 @@
 <Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
-    <DataSource Name="SiriusSQLPK_reporting">
-      <DataSourceReference>/ReportDataSource</DataSourceReference>
+    <DataSource Name="SiriusSQLPK">
+      <DataSourceReference>/Siriusware_ProductionDB</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>790e1ea2-5528-478a-9326-2b3ad7e9dd2c</rd:DataSourceID>
     </DataSource>
@@ -16,7 +16,7 @@
   <DataSets>
     <DataSet Name="GatherData">
       <Query>
-        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <DataSourceName>SiriusSQLPK</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@operator">
             <Value>=Parameters!operator.Value</Value>
@@ -344,7 +344,7 @@ group by operator, department, item </CommandText>
     </DataSet>
     <DataSet Name="SalespointGroup">
       <Query>
-        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <DataSourceName>SiriusSQLPK</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@pFBsp_group">
             <Value>=Parameters!pFBsp_group.Value</Value>
@@ -393,7 +393,7 @@ order by descrip</CommandText>
     </DataSet>
     <DataSet Name="GetSalespoints">
       <Query>
-        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <DataSourceName>SiriusSQLPK</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@pFBsp_group">
             <Value>=Parameters!pFBsp_group.Value</Value>
@@ -419,7 +419,7 @@ order by sh.salespoint</CommandText>
     </DataSet>
     <DataSet Name="GetOperators">
       <Query>
-        <DataSourceName>SiriusSQLPK_reporting</DataSourceName>
+        <DataSourceName>SiriusSQLPK</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@pFBsp_group">
             <Value>=Parameters!pFBsp_group.Value</Value>
@@ -2052,7 +2052,7 @@ order by sh.operator</CommandText>
                               <Style>None</Style>
                             </Border>
                             <BottomBorder>
-                              <Style>Solid</Style>
+                              <Style>None</Style>
                             </BottomBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
@@ -2313,7 +2313,7 @@ order by sh.operator</CommandText>
                                   </Style>
                                 </TextRun>
                                 <TextRun>
-                                  <Value>v 1.4</Value>
+                                  <Value>v 1.5</Value>
                                   <Style>
                                     <FontSize>6pt</FontSize>
                                   </Style>
